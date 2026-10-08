@@ -1,0 +1,10 @@
+# 高校教师工作台（Vue + Flask）运行依赖
+# 安装：python -m pip install -r requirements.txt
+
+Flask==3.0.3        # Web 框架与应用工厂
+Werkzeug==3.0.4     # Flask 依赖（随 Flask 安装，锁定以保证行为一致）
+waitress==3.0.2     # 生产模式 WSGI 服务器（--prod）
+pypdf==6.19.0       # 「PDF 批量合并与拆分」工具
+
+# ---- 开发 / 测试（可选）----
+# pytest==9.1.1     # 运行 tests/ 下的后端测试

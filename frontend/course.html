@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>课程资源 · NBUSAI</title>
+<meta name="description" content="高校课程资源公开页：查看教学大纲、下载课程资料">
+<meta name="theme-color" content="#189d5b">
+<link rel="stylesheet" href="/css/style.css">
+<script src="/js/theme.js"></script>
+</head>
+<body class="pub-body">
+
+<div id="course" v-cloak>
+
+  <!-- ==================== 顶部品牌栏 ==================== -->
+  <header class="pub-top">
+    <div class="pub-brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 18.5V5.5l12 13V5.5"/>
+          <circle cx="6" cy="5.5" r="1.85" fill="currentColor" stroke="none"/>
+          <circle cx="6" cy="18.5" r="1.85" fill="currentColor" stroke="none"/>
+          <circle cx="18" cy="5.5" r="1.85" fill="currentColor" stroke="none"/>
+          <circle cx="18" cy="18.5" r="1.85" fill="currentColor" stroke="none"/>
+        </svg>
+      </span>
+      <span class="pub-brand-text"><b>NBUSAI</b><small>课程中心</small></span>
+    </div>
+    <div class="pub-top-right">
+      <span v-if="data" class="pub-code-chip">{{ data.code }} · {{ data.semester }}</span>
+    </div>
+  </header>
+
+  <!-- ==================== 加载中 ==================== -->
+  <div v-if="loading" class="pub-loading">
+    <div class="pub-spinner" aria-hidden="true"></div>
+    <p>正在加载课程信息…</p>
+  </div>
+
+  <!-- ==================== 不可访问 / 无效链接 ==================== -->
+  <main v-else-if="!data" class="pub-locked">
+    <div class="pub-lock-ico" :class="'st-' + state">
+      <fwb-icon :name="state === 'invalid' ? 'alert' : 'lock'" :size="30"></fwb-icon>
+    </div>
+    <h1>{{ lockedTitle }}</h1>
+    <p class="pub-lock-msg">{{ message }}</p>
+    <div v-if="lockedCourse.name" class="pub-lock-course">
+      <b>{{ lockedCourse.name }}</b>
+      <span v-if="lockedCourse.code">{{ lockedCourse.code }}</span>
+      <span v-if="lockedCourse.teacherName">任课教师 {{ lockedCourse.teacherName }}</span>
+    </div>
+    <p class="pub-lock-foot">若有疑问，请与任课教师联系。</p>
+  </main>
+
+  <!-- ==================== 课程正文 ==================== -->
+  <template v-else>
+    <section class="pub-hero" :style="{ background: data.color }">
+      <div class="pub-hero-in">
+        <div class="pub-hero-code">{{ data.code || "课程" }}<span v-if="data.semester"> · {{ data.semester }}</span></div>
+        <h1>{{ data.name }}</h1>
+        <div class="pub-hero-meta">
+          <span>{{ data.teacher.name }}<template v-if="data.teacher.title"> · {{ data.teacher.title }}</template></span>
+          <span v-if="data.teacher.dept">{{ data.teacher.dept }}</span>
+        </div>
+        <div class="pub-hero-chips">
+          <span v-if="data.credits">{{ data.credits }} 学分</span>
+          <span v-if="data.hours">{{ data.hours }} 学时</span>
+          <span>{{ data.syllabus.length }} 章大纲</span>
+          <span>{{ data.materialCount }} 份资料</span>
+        </div>
+      </div>
+    </section>
+
+    <main class="pub-wrap">
+      <div class="pub-grid">
+        <div class="pub-col">
+          <section v-if="data.intro" class="pub-card">
+            <h2>课程简介</h2>
+            <p class="pub-text">{{ data.intro }}</p>
+          </section>
+
+          <section class="pub-card">
+            <h2>教学大纲<span class="pub-h2-note" v-if="totalHours">共 {{ totalHours }} 学时</span></h2>
+            <div v-if="!data.syllabus.length" class="pub-empty">教师尚未发布教学大纲</div>
+            <div v-else class="pub-table-wrap">
+              <table class="pub-table">
+                <thead>
+                  <tr><th>章节</th><th>学时</th><th>形式</th><th>教学要点</th></tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(s, i) in data.syllabus" :key="i">
+                    <td class="pub-strong">{{ s.chapter }}</td>
+                    <td>{{ s.hours }}</td>
+                    <td><span class="pub-tag">{{ s.type }}</span></td>
+                    <td>{{ s.point }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="pub-card">
+            <h2>课程资料<span class="pub-h2-note" v-if="data.materialCount">可下载 {{ data.materialCount }} 份</span></h2>
+            <div v-if="!data.materials.length" class="pub-empty">教师尚未上传课程资料</div>
+            <div v-else class="pub-files">
+              <div v-for="m in data.materials" :key="m.id" class="pub-file">
+                <div class="file-ico" :class="'tone-' + tone(m.type)">
+                  <fwb-icon :name="icon(m.type)"></fwb-icon>
+                </div>
+                <div class="file-main">
+                  <div class="file-name">{{ m.name }}</div>
+                  <div class="file-meta">{{ m.type }} · {{ m.size || "未知大小" }}<template v-if="m.date"> · {{ m.date }}</template></div>
+                </div>
+                <a class="btn primary sm" :href="fileUrl(m)">
+                  <fwb-icon name="download"></fwb-icon>下载
+                </a>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <aside class="pub-col pub-side">
+          <section class="pub-card">
+            <h2>任课教师</h2>
+            <div class="pub-teacher">
+              <span class="pub-avatar">{{ (data.teacher.name || "?").charAt(0) }}</span>
+              <div>
+                <b>{{ data.teacher.name || "—" }}</b>
+                <small>{{ data.teacher.title || "" }}</small>
+                <small v-if="data.teacher.dept">{{ data.teacher.dept }}</small>
+              </div>
+            </div>
+            <div v-if="data.teacher.email" class="pub-contact">
+              <fwb-icon name="send" :size="15"></fwb-icon>
+              <a :href="'mailto:' + data.teacher.email">{{ data.teacher.email }}</a>
+            </div>
+            <div v-if="data.teacher.office" class="pub-contact">
+              <fwb-icon name="pin" :size="15"></fwb-icon>
+              <span>{{ data.teacher.office }}</span>
+            </div>
+          </section>
+
+          <section class="pub-card pub-open-note" :class="'st-' + data.visibility.state">
+            <h2>开放状态</h2>
+            <div class="pub-open-row">
+              <fwb-icon name="globe" :size="16"></fwb-icon>
+              <b>{{ data.visibility.label }}</b>
+            </div>
+            <p v-if="openWindow">{{ openWindow }}</p>
+          </section>
+
+          <section class="pub-card pub-note">
+            <h2>说明</h2>
+            <p>本页面由任课教师开放，仅用于本课程学习与教学用途。课程资料版权归任课教师所有，请勿用于商业用途或对外传播。</p>
+          </section>
+        </aside>
+      </div>
+    </main>
+
+    <footer class="pub-foot">
+      <span>NBUSAI 教师工作台 · 课程资源公开页</span>
+    </footer>
+  </template>
+
+  <div v-if="toast" class="pub-toast">{{ toast }}</div>
+</div>
+
+  <script src="/vendor/vue.global.prod.js"></script>
+  <script src="/js/icons.js"></script>
+  <script src="/js/course-public.js"></script>
+</body>
+</html>

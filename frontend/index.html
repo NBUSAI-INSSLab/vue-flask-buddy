@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NBUSAI 教师工作台</title>
+<meta name="description" content="面向高校教师的科研 / 教学 / 学生指导一体化工作台（Vue 3 + Flask）">
+<meta name="theme-color" content="#189d5b">
+<link rel="stylesheet" href="css/style.css">
+<script src="js/theme.js"></script>
+</head>
+<body>
+
+<div id="app" v-cloak>
+
+  <!-- ==================== 启动加载 ==================== -->
+  <div v-if="!authChecked" class="boot-loading">
+    <div class="brand-mark boot-mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M6 18.5V5.5l12 13V5.5"/>
+        <circle cx="6" cy="5.5" r="1.85" fill="currentColor" stroke="none"/>
+        <circle cx="6" cy="18.5" r="1.85" fill="currentColor" stroke="none"/>
+        <circle cx="18" cy="5.5" r="1.85" fill="currentColor" stroke="none"/>
+        <circle cx="18" cy="18.5" r="1.85" fill="currentColor" stroke="none"/>
+      </svg>
+    </div>
+    <p>正在加载…</p>
+  </div>
+
+  <!-- ==================== 未登录：登录 / 注册 ==================== -->
+  <page-login v-else-if="!authed"></page-login>
+
+  <!-- ==================== 管理员：管理端 ==================== -->
+  <template v-else-if="isAdmin">
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M6 18.5V5.5l12 13V5.5"/>
+              <circle cx="6" cy="5.5" r="1.85" fill="currentColor" stroke="none"/>
+              <circle cx="6" cy="18.5" r="1.85" fill="currentColor" stroke="none"/>
+              <circle cx="18" cy="5.5" r="1.85" fill="currentColor" stroke="none"/>
+              <circle cx="18" cy="18.5" r="1.85" fill="currentColor" stroke="none"/>
+            </svg>
+          </div>
+          <div class="brand-text">
+            <div class="brand-title"><span class="brand-accent">NBUSAI</span>管理中心</div>
+          </div>
+        </div>
+
+        <nav class="nav">
+          <div class="nav-label">管理</div>
+          <div class="nav-item" :class="{ active: adminPage === 'overview' }"
+               @click="adminNav('overview')">
+            <span class="ni-icon"><fwb-icon name="dashboard"></fwb-icon></span>
+            <span class="ni-text">数据概览</span>
+          </div>
+          <div class="nav-item" :class="{ active: adminPage === 'reviews' }"
+               @click="adminNav('reviews')">
+            <span class="ni-icon"><fwb-icon name="seal"></fwb-icon></span>
+            <span class="ni-text">成果审核</span>
+            <span class="ni-badge warn" v-if="reviewAllStats && reviewAllStats.pending">{{ reviewAllStats.pending }}</span>
+          </div>
+          <div class="nav-item" :class="{ active: adminPage === 'teachers' || adminPage === 'teacher' }"
+               @click="adminNav('teachers')">
+            <span class="ni-icon"><fwb-icon name="users"></fwb-icon></span>
+            <span class="ni-text">教师管理</span>
+            <span class="ni-badge" v-if="adminRows.length">{{ adminRows.length }}</span>
+          </div>
+        </nav>
+
+        <div class="sidebar-foot">
+          <div class="user-card">
+            <div class="avatar">{{ adminAvatar }}</div>
+            <div class="user-meta">
+              <div class="user-name">{{ authUser.name }}</div>
+              <div class="user-role">系统管理员</div>
+            </div>
+            <button class="icon-btn ghost" title="退出登录" @click="doLogout">
+              <fwb-icon name="logout"></fwb-icon>
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <div class="main">
+        <header class="topbar">
+          <div>
+            <div class="page-title">{{ adminMeta[0] }}</div>
+            <div class="page-sub">{{ adminMeta[1] }}</div>
+          </div>
+          <div class="topbar-right">
+            <div class="search-box">
+              <fwb-icon name="search"></fwb-icon>
+              <input v-model="adminSearch" :placeholder="adminSearchPlaceholder" aria-label="搜索">
+            </div>
+            <button class="icon-btn" title="新建账号" @click="newTeacher">
+              <fwb-icon name="plus"></fwb-icon>
+            </button>
+            <button class="icon-btn" title="界面配色" @click="openTheme">
+              <fwb-icon name="palette"></fwb-icon>
+            </button>
+            <button class="icon-btn" title="刷新数据" @click="act.loadAdmin()">
+              <fwb-icon name="rotate"></fwb-icon>
+            </button>
+            <button class="icon-btn" title="退出登录" @click="doLogout">
+              <fwb-icon name="logout"></fwb-icon>
+            </button>
+          </div>
+        </header>
+
+        <main class="content">
+
+          <!-- ============ 一、数据概览 ============ -->
+          <template v-if="adminPage === 'overview'">
+            <template v-if="adminTotals">
+            <div class="stat-grid">
+              <div class="stat-card">
+                <div class="stat-ico blue"><fwb-icon name="users"></fwb-icon></div>
+                <div class="stat-info"><div class="stat-val">{{ adminTotals.teachers }}</div>
+                  <div class="stat-label">在册教师</div></div>
+              </div>
+              <div class="stat-card" @click="adminNav('reviews')" title="进入成果审核">
+                <div class="stat-ico amber"><fwb-icon name="seal"></fwb-icon></div>
+                <div class="stat-info"><div class="stat-val">{{ adminTotals.pending }}<small> 项</small></div>
+                  <div class="stat-label">待审成果</div></div>
+                <span class="stat-trend" v-if="adminTotals.pending">待处理</span>
+              </div>
+              <div class="stat-card">
+                <div class="stat-ico green"><fwb-icon name="flask"></fwb-icon></div>
+                <div class="stat-info"><div class="stat-val">{{ adminTotals.activeProjects }}<small> / {{ adminTotals.projects }}</small></div>
+                  <div class="stat-label">在研 / 全部项目</div></div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-ico violet"><fwb-icon name="book"></fwb-icon></div>
+                <div class="stat-info"><div class="stat-val">{{ adminTotals.papers }}</div>
+                  <div class="stat-label">文献积累</div></div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-ico amber"><fwb-icon name="medal"></fwb-icon></div>
+                <div class="stat-info"><div class="stat-val">{{ adminTotals.achievements }}<small> / {{ adminTotals.published }}</small></div>
+                  <div class="stat-label">成果 / 已发表</div></div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-ico blue"><fwb-icon name="clipboard"></fwb-icon></div>
+                <div class="stat-info"><div class="stat-val">{{ adminTotals.teachings }}<small> / {{ adminTotals.hours }}</small></div>
+                  <div class="stat-label">教学任务 / 学时</div></div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-ico violet"><fwb-icon name="cap"></fwb-icon></div>
+                <div class="stat-info"><div class="stat-val">{{ adminTotals.students }}</div>
+                  <div class="stat-label">指导学生</div></div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-ico teal"><fwb-icon name="globe"></fwb-icon></div>
+                <div class="stat-info"><div class="stat-val">{{ adminTotals.exchanges }}</div>
+                  <div class="stat-label">学术交流</div></div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <h3>教师横向对比</h3>
+                <span class="card-note">点击任意一行查看该教师的四类统计详情</span>
+              </div>
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>教师</th><th>学院</th><th>项目</th><th>论文</th><th>成果</th>
+                    <th>待审</th><th>业绩分</th><th>学生</th><th>教学任务</th><th>学时</th>
+                    <th>交流</th><th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="t in filteredTeachers" :key="t.id"
+                      @click="act.openTeacher(t.id)" class="clickable">
+                    <td>
+                      <div class="tt-name">
+                        <span class="avatar sm" :style="{ background: avatarColor(t.name) }">{{ (t.name || '?').charAt(0) }}</span>
+                        <span>
+                          <b>{{ t.name }}</b>
+                          <small>{{ t.title || '—' }}</small>
+                        </span>
+                      </div>
+                    </td>
+                    <td class="muted">{{ t.dept || '—' }}</td>
+                    <td>{{ t.summary.counts.projects }}</td>
+                    <td>{{ t.summary.counts.papers }}</td>
+                    <td>{{ t.summary.counts.achievements }}</td>
+                    <td>
+                      <span class="audit-tag wait" v-if="t.summary.counts.pending">{{ t.summary.counts.pending }}</span>
+                      <span class="muted" v-else>—</span>
+                    </td>
+                    <td class="em">{{ t.summary.score }}</td>
+                    <td>{{ t.summary.counts.students }}</td>
+                    <td>{{ t.summary.counts.teachings }}</td>
+                    <td>{{ t.summary.counts.hours }}</td>
+                    <td>{{ t.summary.counts.exchanges }}</td>
+                    <td class="row-arrow"><fwb-icon name="right"></fwb-icon></td>
+                  </tr>
+                  <tr v-if="!filteredTeachers.length">
+                    <td colspan="12"><div class="empty" style="padding:36px 0"><p>没有匹配的教师</p></div></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            </template>
+
+            <div v-else class="card">
+              <div class="empty" style="padding:80px 0">
+                <fwb-icon name="rotate" :size="38"></fwb-icon>
+                <p>正在加载全院教师数据…</p>
+              </div>
+            </div>
+          </template>
+
+          <!-- ============ 二、教师管理 ============ -->
+          <template v-else-if="adminPage === 'teachers'">
+            <div class="admin-toolbar">
+              <span class="card-note">共 {{ adminRows.length }} 位教师，其中正常 {{ activeCount }} 位、停用 {{ adminRows.length - activeCount }} 位</span>
+              <button class="btn primary sm" @click="newTeacher">
+                <fwb-icon name="plus"></fwb-icon>新建教师账号
+              </button>
+            </div>
+
+            <div class="tgrid">
+              <div class="tcard" v-for="t in filteredTeachers" :key="t.id">
+                <div class="tcard-head">
+                  <span class="avatar" :style="{ background: avatarColor(t.name) }">{{ (t.name || '?').charAt(0) }}</span>
+                  <div class="tcard-id">
+                    <div class="tcard-name">
+                      {{ t.name }}
+                      <span class="tag">{{ t.title || '—' }}</span>
+                      <span class="tag" :class="t.active ? 'ok' : 'off'">{{ t.active ? '正常' : '已停用' }}</span>
+                      <span class="audit-tag wait" v-if="t.summary.counts.pending">待审 {{ t.summary.counts.pending }}</span>
+                    </div>
+                    <div class="tcard-sub">{{ t.dept || '—' }}</div>
+                    <div class="tcard-sub muted">@{{ t.username }}{{ t.email ? ' · ' + t.email : '' }}</div>
+                  </div>
+                </div>
+
+                <div class="tcard-stats">
+                  <div><b>{{ t.summary.counts.projects }}</b><span>项目</span></div>
+                  <div><b>{{ t.summary.counts.papers }}</b><span>文献</span></div>
+                  <div><b>{{ t.summary.counts.achievements }}</b><span>成果</span></div>
+                  <div><b>{{ t.summary.counts.students }}</b><span>学生</span></div>
+                  <div><b>{{ t.summary.counts.hours }}</b><span>学时</span></div>
+                  <div><b>{{ t.summary.counts.exchanges }}</b><span>交流</span></div>
+                </div>
+
+                <div class="tcard-foot">
+                  <button class="btn ghost sm" @click="act.openTeacher(t.id)">
+                    <fwb-icon name="chart"></fwb-icon>统计详情
+                  </button>
+                  <button class="btn ghost sm" @click="editTeacher(t)">
+                    <fwb-icon name="edit"></fwb-icon>编辑
+                  </button>
+                  <button class="btn ghost sm" @click="resetPwd(t)">
+                    <fwb-icon name="key"></fwb-icon>重置密码
+                  </button>
+                  <button class="btn ghost sm" @click="toggleActive(t)">
+                    <fwb-icon name="rotate"></fwb-icon>{{ t.active ? '停用' : '启用' }}
+                  </button>
+                  <button class="btn ghost sm danger-text" @click="removeTeacher(t)">
+                    <fwb-icon name="trash"></fwb-icon>删除
+                  </button>
+                </div>
+              </div>
+
+              <div class="empty" v-if="!filteredTeachers.length" style="grid-column:1/-1;padding:60px 0">
+                <fwb-icon name="users" :size="40"></fwb-icon>
+                <p>没有匹配的教师，试试调整搜索条件</p>
+              </div>
+            </div>
+          </template>
+
+          <!-- ============ 三、成果审核 ============ -->
+          <template v-else-if="adminPage === 'reviews'">
+            <div class="stat-grid" v-if="reviewAllStats">
+              <div class="stat-card" v-for="k in reviewKpis" :key="k.lab">
+                <div class="stat-ico" :class="k.tone"><fwb-icon :name="k.icon"></fwb-icon></div>
+                <div class="stat-info">
+                  <div class="stat-val">{{ k.val }}<small v-if="k.unit">{{ k.unit }}</small></div>
+                  <div class="stat-label">{{ k.lab }}</div>
+                </div>
+                <span class="stat-trend" v-if="k.hint">{{ k.hint }}</span>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <h3><fwb-icon name="seal"></fwb-icon>成果审核队列</h3>
+                <span class="card-note">教师登记的成果由管理员审核，通过后计入业绩统计</span>
+              </div>
+
+              <div class="toolbar rv-toolbar">
+                <div class="chips">
+                  <div v-for="t in reviewTabs" :key="t.key || 'all'" class="chip"
+                       :class="{ active: reviewStatus === t.key }" @click="setReviewStatus(t.key)">
+                    {{ t.text }}<span class="cnt">{{ t.count }}</span>
+                  </div>
+                </div>
+                <div class="spacer"></div>
+                <div class="select-mini">
+                  <fwb-icon name="user"></fwb-icon>
+                  <select :value="reviewTeacher" @change="setReviewTeacher($event.target.value)" aria-label="按教师筛选">
+                    <option value="">全部教师</option>
+                    <option v-for="t in reviewTeachers" :key="t.id" :value="t.id">
+                      {{ t.name }}（待审 {{ t.pending }}）
+                    </option>
+                  </select>
+                </div>
+                <button class="btn ghost sm" @click="loadReviews()">
+                  <fwb-icon name="rotate"></fwb-icon>刷新
+                </button>
+              </div>
+
+              <div class="batch-bar" v-if="reviewSelectedCount">
+                <span class="bb-text">已选 <b>{{ reviewSelectedCount }}</b> 条成果</span>
+                <div class="spacer"></div>
+                <button class="btn ghost sm" @click="act.reviewClearSelection()">取消选择</button>
+                <button class="btn primary sm" @click="batchReview('approve')">
+                  <fwb-icon name="check"></fwb-icon>批量通过
+                </button>
+                <button class="btn danger sm" @click="batchReview('reject')">
+                  <fwb-icon name="undo"></fwb-icon>批量退回
+                </button>
+              </div>
+
+              <div class="table-wrap">
+                <table class="admin-table rv-table">
+                  <thead>
+                    <tr>
+                      <th class="ck">
+                        <input type="checkbox" aria-label="全选" :checked="allRowsSelected"
+                               :disabled="!reviewRows.length" @change="toggleSelectAll">
+                      </th>
+                      <th>成果名称</th>
+                      <th>登记教师</th>
+                      <th>类型 / 级别</th>
+                      <th>成果状态</th>
+                      <th>日期</th>
+                      <th class="num">业绩分</th>
+                      <th>审核状态</th>
+                      <th class="ops">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="r in reviewRows" :key="r.teacherId + '|' + r.id"
+                        :class="{ on: selectedMap[r.teacherId + '|' + r.id] }">
+                      <td class="ck">
+                        <input type="checkbox" :aria-label="'选择 ' + r.title"
+                               :checked="!!selectedMap[r.teacherId + '|' + r.id]"
+                               @change="toggleRow(r)">
+                      </td>
+                      <td>
+                        <div class="rv-name" @click="openReviewDetail(r)" :title="r.title">
+                          <b>{{ r.title }}</b>
+                          <small v-if="r.venue || r.projectName">{{ r.venue || r.projectName }}</small>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="tt-name">
+                          <span class="avatar sm" :style="{ background: avatarColor(r.teacherName) }">
+                            {{ (r.teacherName || '?').charAt(0) }}
+                          </span>
+                          <span><b>{{ r.teacherName }}</b><small>{{ r.teacherDept || '—' }}</small></span>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="rv-type">{{ r.type || '—' }}</div>
+                        <div class="muted small">{{ r.level || '未标注' }}</div>
+                      </td>
+                      <td><span class="badge gray">{{ r.status || '—' }}</span></td>
+                      <td class="muted">{{ r.date || '未定' }}</td>
+                      <td class="num"><b>{{ r.score }}</b></td>
+                      <td>
+                        <span class="audit-tag" :class="auditTone(r.auditStatus)">{{ r.auditStatus }}</span>
+                        <div class="audit-note-inline" v-if="r.auditStatus === '已退回' && r.auditNote"
+                             :title="r.auditNote">
+                          <fwb-icon name="alert"></fwb-icon>{{ r.auditNote }}
+                        </div>
+                      </td>
+                      <td class="ops">
+                        <button class="btn ghost xs" @click="openReviewDetail(r)">详情</button>
+                        <button class="btn primary xs" v-if="r.auditStatus !== '已通过'"
+                                @click="approve(r)" title="审核通过">
+                          <fwb-icon name="check"></fwb-icon>通过
+                        </button>
+                        <button class="btn ghost xs danger-text" v-if="r.auditStatus !== '已退回'"
+                                @click="reject(r)" title="退回修改">
+                          <fwb-icon name="undo"></fwb-icon>退回
+                        </button>
+                        <button class="btn ghost xs" v-if="r.auditStatus !== '待审核'"
+                                @click="resetReview(r)" title="撤回审核">撤回</button>
+                      </td>
+                    </tr>
+                    <tr v-if="!reviewRows.length">
+                      <td colspan="9">
+                        <div class="empty" style="padding:56px 0">
+                          <fwb-icon :name="reviewStats && reviewStats.pending === 0 && reviewStatus === '待审核' ? 'seal' : 'search'" :size="40"></fwb-icon>
+                          <p>{{ reviewEmptyText }}</p>
+                          <button class="btn ghost sm mt-2" v-if="reviewQ || reviewTeacher"
+                                  @click="setReviewTeacher(''); S.admin.reviewQ = ''">清空筛选条件</button>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="rv-foot" v-if="reviewRows.length">
+                <span class="card-note">
+                  当前条件下共 {{ reviewRows.length }} 条，合计业绩分
+                  {{ reviewStats ? reviewStats.pendingScore + reviewStats.approvedScore + reviewStats.rejectedScore : 0 }}
+                </span>
+              </div>
+            </div>
+          </template>
+
+          <!-- ============ 四、教师统计详情 ============ -->
+          <template v-else-if="adminPage === 'teacher'">
+            <div v-if="!adminDetail" class="card">
+              <div class="empty" style="padding:70px 0">
+                <fwb-icon name="sparkle" :size="38"></fwb-icon><p>正在加载教师统计…</p>
+              </div>
+            </div>
+
+            <template v-else>
+              <!-- ---------- 教师名片 ---------- -->
+              <div class="tprofile">
+                <div class="tp-glow"></div>
+                <div class="tp-top">
+                  <button class="btn ghost sm" @click="adminNav('teachers')">
+                    <fwb-icon name="back"></fwb-icon>返回教师列表
+                  </button>
+                  <div class="tp-actions">
+                    <button class="btn ghost sm" @click="reviewOfTeacher()">
+                      <fwb-icon name="seal"></fwb-icon>成果审核
+                    </button>
+                    <button class="btn ghost sm" @click="editTeacher(detailUser)">
+                      <fwb-icon name="edit"></fwb-icon>编辑资料
+                    </button>
+                    <button class="btn ghost sm" @click="resetPwd(detailUser)">
+                      <fwb-icon name="key"></fwb-icon>重置密码
+                    </button>
+                  </div>
+                </div>
+
+                <div class="tp-body">
+                  <span class="avatar xl tp-avatar" :style="{ background: avatarColor(detailUser.name) }">
+                    {{ (detailUser.name || '?').charAt(0) }}
+                  </span>
+                  <div class="tp-main">
+                    <div class="tp-name">
+                      <b>{{ detailUser.name }}</b>
+                      <span class="badge blue">{{ detailUser.title || '—' }}</span>
+                      <span class="badge" :class="detailUser.active ? 'green' : 'red'">
+                        {{ detailUser.active ? '在册' : '已停用' }}
+                      </span>
+                      <span class="audit-tag wait" v-if="dAudit.pending">
+                        <fwb-icon name="clock"></fwb-icon>{{ dAudit.pending }} 项成果待审
+                      </span>
+                    </div>
+                    <div class="tp-meta">
+                      <span><fwb-icon name="building"></fwb-icon>{{ detailUser.dept || '—' }}</span>
+                      <span><fwb-icon name="send"></fwb-icon>{{ detailUser.email || '—' }}</span>
+                      <span><fwb-icon name="pin"></fwb-icon>{{ detailUser.office || '—' }}</span>
+                      <span><fwb-icon name="user"></fwb-icon>@{{ detailUser.username }}</span>
+                      <span><fwb-icon name="clock"></fwb-icon>最近登录 {{ fmtTime(detailUser.lastLogin) }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="tp-kpis">
+                  <div class="tp-kpi" v-for="m in heroMetrics" :key="m.lab">
+                    <div class="tp-val" :class="{ em: m.em }">{{ m.val }}<small>{{ m.unit }}</small></div>
+                    <div class="tp-lab">{{ m.lab }}</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ---------- 区块导航 ---------- -->
+              <div class="sec-nav">
+                <button class="sec-tab" @click="scrollToSection('sec-research')">
+                  <fwb-icon name="flask"></fwb-icon>科研成果</button>
+                <button class="sec-tab" @click="scrollToSection('sec-exchange')">
+                  <fwb-icon name="globe"></fwb-icon>学术交流</button>
+                <button class="sec-tab" @click="scrollToSection('sec-teaching')">
+                  <fwb-icon name="clipboard"></fwb-icon>教学情况</button>
+                <button class="sec-tab" @click="scrollToSection('sec-student')">
+                  <fwb-icon name="users"></fwb-icon>学生指导</button>
+                <div class="spacer"></div>
+                <span class="card-note">数据实时取自该教师的工作台</span>
+              </div>
+
+              <!-- ========== 一、科研成果统计 ========== -->
+              <section class="sec-card" id="sec-research">
+                <header class="sec-head">
+                  <span class="sec-ico blue"><fwb-icon name="flask"></fwb-icon></span>
+                  <div class="sec-title">
+                    <h3>科研成果统计</h3>
+                    <p>项目规模、成果审核、类型分布与文献积累</p>
+                  </div>
+                  <span class="sec-badge" v-if="d.research.achievements.total">
+                    {{ d.research.achievements.total }} 项成果 · {{ d.research.achievements.score }} 分
+                  </span>
+                </header>
+
+                <div class="kpi-row">
+                  <div class="kpi" v-for="k in researchKpis" :key="k.lab">
+                    <span class="kpi-ico" :class="k.tone"><fwb-icon :name="k.icon"></fwb-icon></span>
+                    <div class="kpi-body">
+                      <div class="kpi-val" :class="{ em: k.em }">
+                        {{ k.val }}<small v-if="k.unit">{{ k.unit }}</small>
+                      </div>
+                      <div class="kpi-lab">{{ k.lab }}</div>
+                      <div class="kpi-hint" v-if="k.hint">{{ k.hint }}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="audit-strip">
+                  <div class="as-head">
+                    <span class="as-title"><fwb-icon name="seal"></fwb-icon>成果审核概况</span>
+                    <span class="card-note">审核通过后计入业绩分统计</span>
+                  </div>
+                  <div class="as-items">
+                    <div class="as-item" v-for="k in auditKpis" :key="k.lab">
+                      <span class="as-ico" :class="k.tone"><fwb-icon :name="k.icon"></fwb-icon></span>
+                      <div class="as-body">
+                        <b>{{ k.val }}<small v-if="k.unit">{{ k.unit }}</small></b>
+                        <span>{{ k.lab }}</span>
+                      </div>
+                      <em v-if="k.hint">{{ k.hint }}</em>
+                    </div>
+                  </div>
+                  <div class="as-log" v-if="auditHistory.length">
+                    <div class="as-log-row" v-for="(h, i) in auditHistory" :key="i">
+                      <span class="audit-tag sm" :class="auditTone(h.status)">{{ h.action }}</span>
+                      <span class="as-log-title" :title="h.title">{{ h.title }}</span>
+                      <span class="as-log-meta">{{ h.at }} · {{ h.by }}</span>
+                    </div>
+                  </div>
+                  <div class="as-foot">
+                    <button class="btn ghost sm" @click="reviewOfTeacher()">
+                      管理该教师的成果审核<fwb-icon name="right"></fwb-icon>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="chart-row">
+                  <div class="chart-box">
+                    <h4><fwb-icon name="chart"></fwb-icon>成果类型分布</h4>
+                    <div class="ring-wrap">
+                      <svg class="ring" viewBox="0 0 120 120" role="img" aria-label="成果类型分布">
+                        <circle cx="60" cy="60" r="52" fill="none" stroke="var(--line-2)" stroke-width="15"></circle>
+                        <g transform="rotate(-90 60 60)">
+                          <circle v-for="s in typeRing.slices" :key="s.k" cx="60" cy="60" r="52"
+                                  fill="none" :stroke="s.color" stroke-width="15"
+                                  :stroke-dasharray="s.dash + ' ' + typeRing.circumference"
+                                  :stroke-dashoffset="s.offset"></circle>
+                        </g>
+                        <text x="60" y="57" text-anchor="middle" class="ring-num">{{ typeRing.total }}</text>
+                        <text x="60" y="73" text-anchor="middle" class="ring-lab">项成果</text>
+                      </svg>
+                      <div class="legend">
+                        <div class="lg-row" v-for="s in typeRing.slices" :key="s.k">
+                          <i :style="{ background: s.color }"></i>
+                          <span class="lg-k">{{ s.k }}</span>
+                          <b>{{ s.v }}</b>
+                          <em>{{ s.pct }}%</em>
+                        </div>
+                        <p class="muted" v-if="!typeRing.slices.length">暂无成果记录</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="chart-box">
+                    <h4><fwb-icon name="trending"></fwb-icon>近四年成果产出</h4>
+                    <div class="bars">
+                      <div class="bar-row" v-for="r in yearBars.rows" :key="r.k">
+                        <span class="bar-k">{{ r.k }}</span>
+                        <span class="bar-track"><i :style="{ width: r.pct + '%' }"></i></span>
+                        <span class="bar-v">{{ r.v }}</span>
+                      </div>
+                    </div>
+                    <h4 class="mt"><fwb-icon name="award"></fwb-icon>成果级别分布</h4>
+                    <div class="bars">
+                      <div class="bar-row" v-for="r in distRows(d.research.achievements.byLevel)" :key="r.k">
+                        <span class="bar-k">{{ r.k }}</span>
+                        <span class="bar-track alt"><i :style="{ width: r.pct + '%' }"></i></span>
+                        <span class="bar-v">{{ r.v }}</span>
+                      </div>
+                      <p class="muted" v-if="!distRows(d.research.achievements.byLevel).length">暂无成果记录</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="list-split">
+                  <div class="list-main">
+                    <h4 class="blk-h4"><fwb-icon name="flask"></fwb-icon>科研项目清单</h4>
+                    <div class="table-wrap">
+                      <table class="admin-table compact">
+                        <thead>
+                          <tr><th>项目名称</th><th>类型</th><th>角色</th><th>状态</th><th>经费</th></tr>
+                        </thead>
+                        <tbody>
+                          <tr v-for="p in projectList" :key="p.id">
+                            <td class="ellip" :title="p.name">{{ p.name }}</td>
+                            <td class="muted">{{ p.type || '—' }}</td>
+                            <td>{{ p.role || '—' }}</td>
+                            <td>
+                              <span class="audit-tag" :class="p.status === '在研' ? 'ok' : 'gray'">
+                                {{ p.status }}
+                              </span>
+                            </td>
+                            <td>{{ p.funding || '—' }}</td>
+                          </tr>
+                          <tr v-if="!projectList.length">
+                            <td colspan="5" class="muted">暂无项目</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  <aside class="list-side">
+                    <h4 class="blk-h4"><fwb-icon name="book"></fwb-icon>文献积累</h4>
+                    <div class="kv-list">
+                      <div class="kv-row"><span class="kv-k">文献总数</span><span class="kv-v">{{ d.research.literature.total }} 篇</span></div>
+                      <div class="kv-row"><span class="kv-k">已读</span><span class="kv-v">{{ d.research.literature.read }} 篇</span></div>
+                      <div class="kv-row"><span class="kv-k">在读</span><span class="kv-v">{{ d.research.literature.reading }} 篇</span></div>
+                      <div class="kv-row"><span class="kv-k">未读</span><span class="kv-v">{{ d.research.literature.unread }} 篇</span></div>
+                    </div>
+                    <div class="donut-mini">
+                      <div class="dm-val">{{ d.research.literature.total ? Math.round(d.research.literature.read / d.research.literature.total * 100) : 0 }}<small>%</small></div>
+                      <div class="dm-lab">文献阅读率</div>
+                    </div>
+                  </aside>
+                </div>
+              </section>
+
+              <!-- ========== 二、学术交流统计 ========== -->
+              <section class="sec-card" id="sec-exchange">
+                <header class="sec-head">
+                  <span class="sec-ico teal"><fwb-icon name="globe"></fwb-icon></span>
+                  <div class="sec-title">
+                    <h3>学术交流统计</h3>
+                    <p>会议、报告、评审与访问交流</p>
+                  </div>
+                  <span class="sec-badge" v-if="d.exchanges.total">{{ d.exchanges.total }} 次交流</span>
+                </header>
+
+                <div class="kpi-row">
+                  <div class="kpi" v-for="k in exchangeKpis" :key="k.lab">
+                    <span class="kpi-ico" :class="k.tone"><fwb-icon :name="k.icon"></fwb-icon></span>
+                    <div class="kpi-body">
+                      <div class="kpi-val" :class="{ em: k.em }">
+                        {{ k.val }}<small v-if="k.unit">{{ k.unit }}</small>
+                      </div>
+                      <div class="kpi-lab">{{ k.lab }}</div>
+                      <div class="kpi-hint" v-if="k.hint">{{ k.hint }}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="chart-row three">
+                  <div class="chart-box">
+                    <h4><fwb-icon name="layers"></fwb-icon>交流类型分布</h4>
+                    <div class="bars">
+                      <div class="bar-row" v-for="r in distRows(d.exchanges.byKind)" :key="r.k">
+                        <span class="bar-k">{{ r.k }}</span>
+                        <span class="bar-track"><i :style="{ width: r.pct + '%' }"></i></span>
+                        <span class="bar-v">{{ r.v }}</span>
+                      </div>
+                      <p class="muted" v-if="!distRows(d.exchanges.byKind).length">暂无交流记录</p>
+                    </div>
+                  </div>
+                  <div class="chart-box">
+                    <h4><fwb-icon name="award"></fwb-icon>级别分布</h4>
+                    <div class="bars">
+                      <div class="bar-row" v-for="r in distRows(d.exchanges.byLevel)" :key="r.k">
+                        <span class="bar-k">{{ r.k }}</span>
+                        <span class="bar-track alt"><i :style="{ width: r.pct + '%' }"></i></span>
+                        <span class="bar-v">{{ r.v }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="chart-box">
+                    <h4><fwb-icon name="user"></fwb-icon>参与角色</h4>
+                    <div class="bars">
+                      <div class="bar-row" v-for="r in distRows(d.exchanges.byRole)" :key="r.k">
+                        <span class="bar-k">{{ r.k }}</span>
+                        <span class="bar-track warm"><i :style="{ width: r.pct + '%' }"></i></span>
+                        <span class="bar-v">{{ r.v }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <h4 class="blk-h4"><fwb-icon name="clock"></fwb-icon>最近交流记录</h4>
+                <div class="table-wrap">
+                  <table class="admin-table compact">
+                    <thead>
+                      <tr><th>名称</th><th>类型</th><th>级别</th><th>角色</th><th>时间</th><th>状态</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(x, i) in d.exchanges.recent" :key="i">
+                        <td class="ellip" :title="x.title">{{ x.title }}</td>
+                        <td class="muted">{{ x.kind || '—' }}</td>
+                        <td>{{ x.level || '—' }}</td>
+                        <td>{{ x.role || '—' }}</td>
+                        <td class="muted">{{ x.start || '—' }}</td>
+                        <td>
+                          <span class="audit-tag" :class="x.status === '已确认' ? 'ok' : 'gray'">
+                            {{ x.status }}
+                          </span>
+                        </td>
+                      </tr>
+                      <tr v-if="!d.exchanges.recent.length">
+                        <td colspan="6" class="muted">暂无交流记录</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <!-- ========== 三、教学情况统计 ========== -->
+              <section class="sec-card" id="sec-teaching">
+                <header class="sec-head">
+                  <span class="sec-ico violet"><fwb-icon name="clipboard"></fwb-icon></span>
+                  <div class="sec-title">
+                    <h3>教学情况统计</h3>
+                    <p>教学任务、课程资源与学时</p>
+                  </div>
+                  <span class="sec-badge" v-if="d.teaching.tasks">{{ d.teaching.tasks }} 门课程 · {{ d.teaching.hours }} 学时</span>
+                </header>
+
+                <div class="kpi-row">
+                  <div class="kpi" v-for="k in teachingKpis" :key="k.lab">
+                    <span class="kpi-ico" :class="k.tone"><fwb-icon :name="k.icon"></fwb-icon></span>
+                    <div class="kpi-body">
+                      <div class="kpi-val" :class="{ em: k.em }">
+                        {{ k.val }}<small v-if="k.unit">{{ k.unit }}</small>
+                      </div>
+                      <div class="kpi-lab">{{ k.lab }}</div>
+                      <div class="kpi-hint" v-if="k.hint">{{ k.hint }}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="chart-row">
+                  <div class="chart-box">
+                    <h4><fwb-icon name="layers"></fwb-icon>教学类型分布</h4>
+                    <div class="bars">
+                      <div class="bar-row" v-for="r in distRows(d.teaching.byType)" :key="r.k">
+                        <span class="bar-k">{{ r.k }}</span>
+                        <span class="bar-track"><i :style="{ width: r.pct + '%' }"></i></span>
+                        <span class="bar-v">{{ r.v }}</span>
+                      </div>
+                      <p class="muted" v-if="!distRows(d.teaching.byType).length">暂无教学任务</p>
+                    </div>
+                  </div>
+                  <div class="chart-box">
+                    <h4><fwb-icon name="target"></fwb-icon>进度指标</h4>
+                    <div class="gauge-row">
+                      <div class="gauge">
+                        <svg viewBox="0 0 120 120">
+                          <circle cx="60" cy="60" r="52" fill="none" stroke="var(--line-2)" stroke-width="13"></circle>
+                          <circle cx="60" cy="60" r="52" fill="none" stroke="var(--primary)" stroke-width="13"
+                                  stroke-linecap="round" transform="rotate(-90 60 60)"
+                                  :stroke-dasharray="(d.teaching.outlineProgress / 100 * 326.7) + ' 326.7'"></circle>
+                          <text x="60" y="58" text-anchor="middle" class="ring-num">{{ d.teaching.outlineProgress }}%</text>
+                          <text x="60" y="74" text-anchor="middle" class="ring-lab">大纲完成</text>
+                        </svg>
+                      </div>
+                      <div class="gauge">
+                        <svg viewBox="0 0 120 120">
+                          <circle cx="60" cy="60" r="52" fill="none" stroke="var(--line-2)" stroke-width="13"></circle>
+                          <circle cx="60" cy="60" r="52" fill="none" stroke="var(--violet)" stroke-width="13"
+                                  stroke-linecap="round" transform="rotate(-90 60 60)"
+                                  :stroke-dasharray="(d.teaching.taskDoneRate / 100 * 326.7) + ' 326.7'"></circle>
+                          <text x="60" y="58" text-anchor="middle" class="ring-num">{{ d.teaching.taskDoneRate }}%</text>
+                          <text x="60" y="74" text-anchor="middle" class="ring-lab">任务完成</text>
+                        </svg>
+                      </div>
+                    </div>
+                    <div class="bars mt">
+                      <div class="bar-row" v-for="r in teachingStageBars.rows" :key="r.k">
+                        <span class="bar-k">{{ r.k }}</span>
+                        <span class="bar-track warm"><i :style="{ width: r.pct + '%' }"></i></span>
+                        <span class="bar-v">{{ r.v }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <h4 class="blk-h4"><fwb-icon name="clipboard"></fwb-icon>教学任务清单</h4>
+                <div class="table-wrap">
+                  <table class="admin-table compact">
+                    <thead>
+                      <tr><th>课程</th><th>课程号</th><th>类型</th><th>阶段</th><th>学时</th><th>学生</th><th>大纲</th><th>评教</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="g in teachingList" :key="g.id">
+                        <td><b>{{ g.name }}</b></td>
+                        <td class="muted">{{ g.code || '—' }}</td>
+                        <td class="muted">{{ g.type || '—' }}</td>
+                        <td>
+                          <span class="audit-tag" :class="g.stage === '进行中' ? 'ok' : 'gray'">
+                            {{ g.stage || '—' }}
+                          </span>
+                        </td>
+                        <td>{{ g.hours || '—' }}</td>
+                        <td>{{ g.students || '—' }}</td>
+                        <td class="w-progress">
+                          <span class="progress slim"><i :style="{ width: (g.syllabusTotal ? Math.round(g.syllabusDone / g.syllabusTotal * 100) : 0) + '%' }"></i></span>
+                          <span class="muted">{{ g.syllabusDone }}/{{ g.syllabusTotal }}</span>
+                        </td>
+                        <td class="em">{{ g.evalScore || '—' }}</td>
+                      </tr>
+                      <tr v-if="!teachingList.length">
+                        <td colspan="8" class="muted">暂无教学任务</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <!-- ========== 四、学生指导统计 ========== -->
+              <section class="sec-card" id="sec-student">
+                <header class="sec-head">
+                  <span class="sec-ico amber"><fwb-icon name="users"></fwb-icon></span>
+                  <div class="sec-title">
+                    <h3>学生指导统计</h3>
+                    <p>指导规模、培养进度与沟通情况</p>
+                  </div>
+                  <span class="sec-badge" v-if="d.students.total">
+                    指导 {{ d.students.total }} 人 · 平均进度 {{ d.students.avgProgress }}%
+                  </span>
+                </header>
+
+                <div class="kpi-row">
+                  <div class="kpi" v-for="k in studentKpis" :key="k.lab">
+                    <span class="kpi-ico" :class="k.tone"><fwb-icon :name="k.icon"></fwb-icon></span>
+                    <div class="kpi-body">
+                      <div class="kpi-val" :class="{ em: k.em }">
+                        {{ k.val }}<small v-if="k.unit">{{ k.unit }}</small>
+                      </div>
+                      <div class="kpi-lab">{{ k.lab }}</div>
+                      <div class="kpi-hint" v-if="k.hint">{{ k.hint }}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="chart-row">
+                  <div class="chart-box">
+                    <h4><fwb-icon name="layers"></fwb-icon>学生阶段分布</h4>
+                    <div class="bars">
+                      <div class="bar-row" v-for="r in distRows(d.students.byStage)" :key="r.k">
+                        <span class="bar-k">{{ r.k }}</span>
+                        <span class="bar-track"><i :style="{ width: r.pct + '%' }"></i></span>
+                        <span class="bar-v">{{ r.v }}</span>
+                      </div>
+                      <p class="muted" v-if="!distRows(d.students.byStage).length">暂无学生</p>
+                    </div>
+                    <h4 class="mt"><fwb-icon name="target"></fwb-icon>研究方向分布</h4>
+                    <div class="bars">
+                      <div class="bar-row" v-for="r in distRows(d.students.byDirection)" :key="r.k">
+                        <span class="bar-k">{{ r.k }}</span>
+                        <span class="bar-track alt"><i :style="{ width: r.pct + '%' }"></i></span>
+                        <span class="bar-v">{{ r.v }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="chart-box">
+                    <h4><fwb-icon name="check"></fwb-icon>指导概况</h4>
+                    <div class="kv-list">
+                      <div class="kv-row"><span class="kv-k">里程碑总数</span><span class="kv-v">{{ d.students.milestones.total }} 项</span></div>
+                      <div class="kv-row"><span class="kv-k">已完成</span><span class="kv-v">{{ d.students.milestones.done }} 项</span></div>
+                      <div class="kv-row"><span class="kv-k">沟通记录</span><span class="kv-v">{{ d.students.logCount }} 条</span></div>
+                      <div class="kv-row"><span class="kv-k">本周需沟通</span><span class="kv-v">{{ d.students.needMeeting }} 人</span></div>
+                    </div>
+                    <div class="need-box" v-if="studentNeedList.length">
+                      <div class="nb-title"><fwb-icon name="bell"></fwb-icon>本周需沟通</div>
+                      <div class="nb-list">
+                        <span class="nb-item" v-for="(s, i) in studentNeedList" :key="i">
+                          {{ s.name }}<em>{{ s.nextMeeting }}</em>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <h4 class="blk-h4"><fwb-icon name="users"></fwb-icon>指导学生清单</h4>
+                <div class="table-wrap">
+                  <table class="admin-table compact">
+                    <thead>
+                      <tr><th>姓名</th><th>学位</th><th>年级</th><th>阶段</th><th>进度</th><th>论文题目</th><th>下次沟通</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(s, i) in d.students.list" :key="i">
+                        <td><b>{{ s.name }}</b></td>
+                        <td class="muted">{{ s.degree }}</td>
+                        <td class="muted">{{ s.grade }}</td>
+                        <td><span class="audit-tag gray">{{ s.stage || '—' }}</span></td>
+                        <td class="w-progress">
+                          <span class="progress slim"><i :style="{ width: s.progress + '%' }"></i></span>
+                          <span class="muted">{{ s.progress }}%</span>
+                        </td>
+                        <td class="ellip" :title="s.thesisTitle">{{ s.thesisTitle || '—' }}</td>
+                        <td class="muted">{{ s.nextMeeting || '—' }}</td>
+                      </tr>
+                      <tr v-if="!d.students.list.length">
+                        <td colspan="7" class="muted">暂无指导学生</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </template>
+          </template>
+        </main>
+      </div>
+    </div>
+  </template>
+
+  <!-- ==================== 教师：工作台 ==================== -->
+  <template v-else>
+    <div class="app">
+      <!-- ==================== 侧边栏 ==================== -->
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">
+            <!-- NBUSAI 徽标：字母 N 即一条神经网络链路（笔画为连线、四端为节点） -->
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M6 18.5V5.5l12 13V5.5"/>
+              <circle cx="6" cy="5.5" r="1.85" fill="currentColor" stroke="none"/>
+              <circle cx="6" cy="18.5" r="1.85" fill="currentColor" stroke="none"/>
+              <circle cx="18" cy="5.5" r="1.85" fill="currentColor" stroke="none"/>
+              <circle cx="18" cy="18.5" r="1.85" fill="currentColor" stroke="none"/>
+            </svg>
+          </div>
+          <div class="brand-text">
+            <div class="brand-title"><span class="brand-accent">NBUSAI</span>教师工作台</div>
+          </div>
+        </div>
+
+        <nav class="nav">
+          <template v-for="group in navGroups" :key="group.label">
+            <div class="nav-label">{{ group.label }}</div>
+            <div v-for="item in group.items" :key="item.key"
+                 class="nav-item" :class="{ active: navParent === item.key }"
+                 @click="go(item.key)">
+              <span class="ni-icon"><fwb-icon :name="item.icon"></fwb-icon></span>
+              <span class="ni-text">{{ item.text }}</span>
+              <span class="ni-badge" v-if="navCount(item.key) !== null">{{ navCount(item.key) }}</span>
+            </div>
+          </template>
+        </nav>
+
+        <div class="sidebar-foot">
+          <div class="countdown-card" v-if="countdown">
+            <div class="cd-label">最近项目截止</div>
+            <div class="cd-title">{{ countdown.title }}</div>
+            <div class="cd-days">{{ countdown.days }}<small>天</small></div>
+            <div class="cd-bar"><i :style="{ width: countdown.pct + '%' }"></i></div>
+          </div>
+          <div class="user-card">
+            <div class="avatar">{{ avatarChar }}</div>
+            <div class="user-meta">
+              <div class="user-name">{{ profile.name || '未设置' }} {{ profile.title || '' }}</div>
+              <div class="user-role">{{ profile.dept || '—' }}</div>
+            </div>
+            <button class="icon-btn ghost" title="设置" @click="openSettings">
+              <fwb-icon name="settings"></fwb-icon>
+            </button>
+            <button class="icon-btn ghost" title="退出登录" @click="doLogout">
+              <fwb-icon name="logout"></fwb-icon>
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <!-- ==================== 主区 ==================== -->
+      <div class="main">
+        <header class="topbar">
+          <div>
+            <div class="page-title">{{ meta[0] }}</div>
+            <div class="page-sub">{{ meta[1] }}</div>
+          </div>
+          <div class="topbar-right">
+            <div class="search-box">
+              <fwb-icon name="search"></fwb-icon>
+              <input v-model="searchQ" @keyup.enter="doSearch"
+                     placeholder="搜索项目 / 文献 / 学生…（回车）" aria-label="全局搜索">
+            </div>
+            <button class="icon-btn" id="quickBtn" title="快捷新建" @click="quickMenu = !quickMenu">
+              <fwb-icon name="plus"></fwb-icon>
+            </button>
+            <button class="icon-btn" title="待办提醒" @click="go('dashboard')">
+              <fwb-icon name="bell"></fwb-icon>
+              <span class="dot" v-if="stats.openTodos"></span>
+            </button>
+            <button class="icon-btn" title="界面配色" @click="openTheme">
+              <fwb-icon name="palette"></fwb-icon>
+            </button>
+          </div>
+        </header>
+
+        <main class="content">
+          <div v-if="!ready" class="empty" style="padding-top:120px">
+            <fwb-icon name="sparkle" :size="40"></fwb-icon>
+            <p>正在加载工作台数据…</p>
+          </div>
+          <component v-else :is="pageComponent" :key="route + ':' + detailId"></component>
+        </main>
+      </div>
+    </div>
+
+    <!-- ==================== 快捷新建菜单 ==================== -->
+    <div class="quick-menu" :class="{ show: quickMenu }">
+      <div v-for="q in quickItems" :key="q.label" class="qm-item" @click="runQuick(q)">
+        <span class="qm-ico" :class="'c-' + q.tone"></span>{{ q.label }}
+      </div>
+    </div>
+  </template>
+
+  <fwb-modal></fwb-modal>
+  <fwb-toasts></fwb-toasts>
+</div>
+
+<script src="vendor/vue.global.prod.js"></script>
+<script src="js/icons.js"></script>
+<script src="js/api.js"></script>
+<script src="js/util.js"></script>
+<script src="js/store.js"></script>
+<script src="js/components.js"></script>
+<script src="js/forms.js"></script>
+<script src="js/pages/login.js"></script>
+<script src="js/pages/home.js"></script>
+<script src="js/pages/projects.js"></script>
+<script src="js/pages/literature.js"></script>
+<script src="js/pages/exchanges.js"></script>
+<script src="js/pages/achievements.js"></script>
+<script src="js/pages/teachings.js"></script>
+<script src="js/pages/courses.js"></script>
+<script src="js/pages/students.js"></script>
+<script src="js/pages/schedule.js"></script>
+<script src="js/pages/developments.js"></script>
+<script src="js/pages/tools.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
