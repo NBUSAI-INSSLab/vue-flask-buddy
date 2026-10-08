@@ -84,6 +84,7 @@
       '      <div class="course-res-count">' +
       '        <span class="badge blue">{{ (c.syllabus || []).length }} 章</span>' +
       '        <span class="badge violet">{{ (c.materials || []).length }} 份资料</span>' +
+      '        <span class="badge teal">{{ (c.assistants || []).length }} 位助教</span>' +
       "      </div>" +
       "    </div>" +
       "  </div>" +
@@ -102,6 +103,18 @@
     computed: {
       item: function () { return this.act.get("courses", this.S.detailId); },
       mats: function () { return (this.item && this.item.materials) || []; },
+      calRows: function () { return (this.item && this.item.calendar) || []; },
+      tas: function () { return (this.item && this.item.assistants) || []; },
+      calHours: function () {
+        return this.calRows.reduce(function (s, r) {
+          var n = parseInt(parseFloat(r.hours), 10);
+          return s + (isNaN(n) ? 0 : n);
+        }, 0);
+      },
+      hasContact: function () {
+        var it = this.item || {};
+        return !!(it.qqGroup || it.hasQr || (it.assistants || []).length);
+      },
       fileCount: function () {
         return this.mats.filter(function (m) { return !!m.stored; }).length;
       },
@@ -200,6 +213,28 @@
           return t.url === "internal://teaching-calendar";
         })[0];
         this.forms.openToolRunner(tool || { name: "教学日历编排", url: "internal://teaching-calendar" });
+      },
+      /** 打开「助教与联系方式」编辑弹窗（助教 / QQ 群 / 教学日历三块） */
+      openContact: function () {
+        this.act.openModal({
+          title: "助教与联系方式",
+          wide: true,
+          component: "fwb-course-contact",
+          props: { courseId: this.S.detailId }
+        });
+      },
+      /** 演示工具入口保留，但主编辑路径走「日历与联系方式」弹窗 */
+      calDate: function (d) {
+        var m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(d || ""));
+        if (!m) return String(d || "");
+        return ("0" + m[2]).slice(-2) + "." + ("0" + m[3]).slice(-2);
+      },
+      /** 电话 → tel: 链接（去掉空格与连字符） */
+      telOf: function (v) { return String(v || "").replace(/[\s-]/g, ""); },
+      calWeekday: function (d) {
+        var m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(d || ""));
+        if (!m) return "";
+        return "周" + "日一二三四五六".charAt(new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).getDay());
       }
     },
     template:
@@ -214,7 +249,8 @@
       '        <span class="badge gray">{{ item.credits }} 学分 / {{ item.hours }} 学时</span>' +
       "      </div></div>" +
       '    <div class="row">' +
-      '      <button class="btn ghost" @click="runCalendar"><fwb-icon name="calendar"/>编排教学日历</button>' +
+      '      <button class="btn ghost" @click="openContact"><fwb-icon name="chat"/>助教与联系' +
+      '        <span v-if="hasContact" class="badge teal" style="margin-left:4px">已配置</span></button>' +
       '      <button class="btn ghost" @click="edit"><fwb-icon name="edit"/>编辑</button>' +
       '      <button class="btn danger" @click="del"><fwb-icon name="trash"/>删除</button>' +
       "    </div>" +
@@ -248,7 +284,9 @@
 
       '  <div class="tabs" style="margin-top:18px">' +
       '    <div class="tab" :class="{ active: tab === \'syllabus\' }" @click="tab = \'syllabus\'">教学大纲（{{ (item.syllabus || []).length }}）</div>' +
+      '    <div class="tab" :class="{ active: tab === \'calendar\' }" @click="tab = \'calendar\'">教学日历（{{ calRows.length }}）</div>' +
       '    <div class="tab" :class="{ active: tab === \'materials\' }" @click="tab = \'materials\'">课程资料（{{ mats.length }}）</div>' +
+      '    <div class="tab" :class="{ active: tab === \'ta\' }" @click="tab = \'ta\'">课程助教（{{ tas.length }}）</div>' +
       "  </div>" +
 
       '  <div v-if="tab === \'syllabus\'" class="card">' +
@@ -261,6 +299,54 @@
       '      <tfoot><tr><td class="strong">合计</td><td class="strong">{{ totalHours }} 学时</td><td></td><td></td></tr></tfoot>' +
       "    </table>" +
       '    <div v-else class="card-body"><div class="empty"><p>暂无教学大纲</p></div></div>' +
+      "  </div>" +
+
+      /* ---------- 教学日历 ---------- */
+      '  <div v-else-if="tab === \'calendar\'" class="card">' +
+      '    <div class="cal-toolbar">' +
+      '      <div class="mh-hint">按周展示教学安排，学生公开页同步显示；QQ 群号与二维码也在此维护</div>' +
+      '      <button class="btn ghost sm" @click="openContact"><fwb-icon name="edit"/>编辑日历与联系方式</button>' +
+      "    </div>" +
+      '    <table class="tbl" v-if="calRows.length">' +
+      "      <thead><tr><th>周次</th><th>日期</th><th>教学内容</th><th>学时</th><th>形式</th><th>备注</th></tr></thead>" +
+      "      <tbody><tr v-for=\"(r, i) in calRows\" :key=\"i\">" +
+      '        <td class="strong">{{ r.week }}</td>' +
+      '        <td class="cal-cell-date">{{ calDate(r.date) }}<small v-if="calWeekday(r.date)">{{ calWeekday(r.date) }}</small></td>' +
+      "        <td>{{ r.topic }}</td>" +
+      '        <td>{{ r.hours || "—" }}</td>' +
+      '        <td><span class="badge gray">{{ r.type || "—" }}</span></td>' +
+      '        <td class="muted">{{ r.note || "—" }}</td>' +
+      "      </tr></tbody>" +
+      '      <tfoot><tr><td class="strong">合计</td><td></td><td class="strong">{{ calRows.length }} 周</td>' +
+      '        <td class="strong">{{ calHours }} 学时</td><td></td><td></td></tr></tfoot>' +
+      "    </table>" +
+      '    <div v-else class="card-body"><div class="empty"><fwb-icon name="calendar" :size="40"/>' +
+      "      <p>暂无教学日历，可从教学大纲一键生成</p>" +
+      '      <button class="btn ghost sm mt-2" @click="openContact"><fwb-icon name="edit"/>去添加</button></div></div>' +
+      "  </div>" +
+
+      /* ---------- 课程助教 ---------- */
+      '  <div v-else-if="tab === \'ta\'" class="card">' +
+      '    <div class="cal-toolbar">' +
+      '      <div class="mh-hint">助教的姓名与联系方式会显示在学生公开页，学生可直接拨打或发邮件咨询</div>' +
+      '      <button class="btn ghost sm" @click="openContact"><fwb-icon name="edit"/>编辑助教信息</button>' +
+      "    </div>" +
+      '    <table class="tbl" v-if="tas.length">' +
+      "      <thead><tr><th>姓名</th><th>身份 / 分工</th><th>电话</th><th>邮箱</th><th>QQ</th><th>值班与备注</th></tr></thead>" +
+      "      <tbody><tr v-for=\"(t, i) in tas\" :key=\"i\">" +
+      '        <td class="strong">{{ t.name || "—" }}</td>' +
+      '        <td><span class="badge teal">{{ t.role || "助教" }}</span></td>' +
+      '        <td><a v-if="t.phone" class="ta-link" :href="\'tel:\' + telOf(t.phone)">{{ t.phone }}</a>' +
+      '          <span v-else class="muted">—</span></td>' +
+      '        <td><a v-if="t.email" class="ta-link" :href="\'mailto:\' + t.email">{{ t.email }}</a>' +
+      '          <span v-else class="muted">—</span></td>' +
+      '        <td>{{ t.qq || "—" }}</td>' +
+      '        <td class="muted">{{ t.note || "—" }}</td>' +
+      "      </tr></tbody>" +
+      "    </table>" +
+      '    <div v-else class="card-body"><div class="empty"><fwb-icon name="users" :size="40"/>' +
+      "      <p>暂无助教信息，添加后会同步展示在学生公开页</p>" +
+      '      <button class="btn ghost sm mt-2" @click="openContact"><fwb-icon name="edit"/>去添加</button></div></div>' +
       "  </div>" +
 
       '  <div v-else class="card">' +

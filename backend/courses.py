@@ -364,6 +364,167 @@ def purge_course_files(user_id: str, course_id: str) -> None:
 
 
 # --------------------------------------------------------------------------- #
+# 教学日历 / 助教名单 / 联系方式（学生公开页展示）
+# --------------------------------------------------------------------------- #
+# 日历行白名单字段：周次 / 日期 / 教学内容 / 学时 / 形式 / 备注
+CAL_FIELDS = ("week", "date", "topic", "hours", "type", "note")
+CAL_MAX_ROWS = 60          # 一学期周数上限，防止误贴入超长列表
+CAL_TEXT_MAX = 120         # 单元格文本上限
+
+# 助教白名单字段：姓名 / 身份分工 / 电话 / 邮箱 / QQ / 备注
+TA_FIELDS = ("name", "role", "phone", "email", "qq", "note")
+TA_MAX = 10                # 一门课最多登记的助教人数
+TA_TEXT_MAX = 80           # 姓名、身份、电话、邮箱、QQ 的长度上限
+TA_NOTE_MAX = 160          # 备注（答疑时间等信息）上限
+
+# 群二维码与课程资料同目录，文件名固定为 qr.<嗅探出的扩展名>
+QR_MAX_BYTES = 4 * 1024 * 1024
+QR_EXTS = ("png", "jpg", "jpeg", "gif", "webp")
+
+
+def clean_calendar(value) -> list:
+    """教学日历清洗：白名单字段、去空行、截断长度；非法输入一律返回 []。
+
+    公开接口与教师端保存共用同一份清洗，保证「库里即所显」。
+    """
+    if not isinstance(value, list):
+        return []
+    rows: list[dict] = []
+    for raw in value[:CAL_MAX_ROWS]:
+        if not isinstance(raw, dict):
+            continue
+        row = {k: str(raw.get(k) or "").strip()[:CAL_TEXT_MAX] for k in CAL_FIELDS}
+        # 周次、日期、内容全空视为占位行，直接丢弃
+        if not (row["week"] or row["date"] or row["topic"]):
+            continue
+        if not row["week"]:
+            row["week"] = f"第 {len(rows) + 1} 周"
+        rows.append(row)
+    return rows
+
+
+def clean_assistants(value) -> list:
+    """助教名单清洗：白名单字段、去空行、截断长度；非法输入一律返回 []。
+
+    与 ``clean_calendar`` 同源：公开接口与教师端保存共用同一份清洗，
+    保证「库里即所显」，学生侧不会看到教师端不存在的脏字段。
+    """
+    if not isinstance(value, list):
+        return []
+    rows: list[dict] = []
+    for raw in value[:TA_MAX]:
+        if not isinstance(raw, dict):
+            continue
+        row = {
+            k: str(raw.get(k) or "").strip()[: (TA_NOTE_MAX if k == "note" else TA_TEXT_MAX)]
+            for k in TA_FIELDS
+        }
+        # 没有任何有效信息的占位行直接丢弃
+        if not any(row[k] for k in TA_FIELDS):
+            continue
+        rows.append(row)
+    return rows
+
+
+def sanitize_contact(payload: dict) -> dict:
+    """联系方式补丁清洗，返回可落库的 patch（可能为空）。
+
+    只处理请求里显式出现的键 —— 教师端可能只改其中一项，
+    未出现的键保持原值不动。
+    """
+    patch: dict = {}
+    if "qqGroup" in payload:
+        patch["qqGroup"] = str(payload.get("qqGroup") or "").strip()[:64]
+    if "calendar" in payload:
+        patch["calendar"] = clean_calendar(payload.get("calendar"))
+    if "assistants" in payload:
+        patch["assistants"] = clean_assistants(payload.get("assistants"))
+    return patch
+
+
+def qr_path(user_id: str, course_id: str, course: dict) -> Path | None:
+    """群二维码磁盘路径；归属校验与 ``material_path`` 完全同源。
+
+    两道校验缺一不可：
+    1. ``qqQr`` 必须以 ``<uid>/<cid>/qr.`` 开头 —— 课程文档可被教师接口
+       整体 PATCH，若不校验归属则可能指向别的教师的目录；
+    2. 解析后的真实路径必须仍在 ``course_files`` 根目录内 —— 防 ``..`` 穿越。
+    """
+    rel = str(course.get("qqQr") or "").strip()
+    if not rel.startswith(f"{user_id}/{course_id}/qr."):
+        return None
+    root = COURSE_FILES_DIR.resolve()
+    path = (root / rel).resolve()
+    if root not in path.parents or not path.is_file():
+        return None
+    return path
+
+
+def has_qr(course: dict) -> bool:
+    """公开侧判断：仅凭文档里的相对路径校验文件是否真实存在。"""
+    rel = str(course.get("qqQr") or "").strip()
+    if not rel or "/qr." not in rel:
+        return False
+    root = COURSE_FILES_DIR.resolve()
+    path = (root / rel).resolve()
+    return root in path.parents and path.is_file()
+
+
+def save_qr(user_id: str, course_id: str, fs) -> dict:
+    """保存上传的群二维码，返回 ``{qqQr, bytes}``；类型按文件内容嗅探。"""
+    from .links import sniff_ext
+
+    data = fs.read(QR_MAX_BYTES + 1)
+    if not data:
+        raise ValueError("没有收到文件内容")
+    if len(data) > QR_MAX_BYTES:
+        raise ValueError(f"二维码图片不能超过 {QR_MAX_BYTES // 1024 // 1024} MB")
+    ext = sniff_ext(data)
+    if ext is None or ext not in QR_EXTS:
+        raise ValueError("二维码仅支持 PNG / JPG / GIF / WebP 图片")
+
+    folder = material_dir(user_id, course_id)
+    folder.mkdir(parents=True, exist_ok=True)
+    name = f"qr.{ext}"
+    (folder / name).write_bytes(data)
+    # 换成不同格式时清掉旧后缀的文件；Windows 下文件可能被正在进行的
+    # 下载请求占用，删除失败不影响本次保存（残留会在下次替换时再清）
+    for old in folder.glob("qr.*"):
+        if old.name != name:
+            try:
+                old.unlink(missing_ok=True)
+            except OSError:  # noqa: B014 - best effort
+                pass
+    return {"qqQr": f"{user_id}/{course_id}/{name}", "bytes": len(data)}
+
+
+def drop_qr(user_id: str, course_id: str, course: dict) -> bool:
+    """删除群二维码文件；被占用或不存在时尽力而为，文档字段照常清空。"""
+    path = qr_path(user_id, course_id, course)
+    if path is None:
+        return False
+    try:
+        path.unlink(missing_ok=True)
+        return True
+    except OSError:  # noqa: B014 - Windows 上文件被并发请求占用时删除失败
+        return False
+
+
+def teacher_phone(user_id: str) -> str:
+    """教师手机号存于其工作台个人资料（users 表没有该列），这里即时读取。"""
+    if not user_id:
+        return ""
+    try:
+        from . import db
+        from .store import Store
+
+        profile = Store(db.connect_tenant(user_id)).get_profile() or {}
+        return str(profile.get("phone") or "").strip()[:24]
+    except Exception:  # noqa: BLE001 - 手机号拿不到不影响课程页其余内容
+        return ""
+
+
+# --------------------------------------------------------------------------- #
 # 学生可见的数据
 # --------------------------------------------------------------------------- #
 def public_material(m: dict) -> dict:
@@ -399,6 +560,10 @@ def public_payload(course: dict, teacher: dict, vis: dict) -> dict:
             }
             for s in (course.get("syllabus") or []) if isinstance(s, dict)
         ],
+        "calendar": clean_calendar(course.get("calendar")),
+        "assistants": clean_assistants(course.get("assistants")),
+        "qqGroup": str(course.get("qqGroup") or "").strip()[:64],
+        "hasQr": has_qr(course),
         "materials": materials,
         "materialCount": len(materials),
         "teacher": {
@@ -407,6 +572,7 @@ def public_payload(course: dict, teacher: dict, vis: dict) -> dict:
             "dept": (teacher or {}).get("dept") or "",
             "email": (teacher or {}).get("email") or "",
             "office": (teacher or {}).get("office") or "",
+            "phone": teacher_phone((teacher or {}).get("id") or ""),
         },
         "visibility": vis,
     }

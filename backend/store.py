@@ -155,10 +155,12 @@ class Store:
             self._add_many_ordered(coll, items)
         self.conn.commit()
         # 种子 / 备份数据可能没有成果审核字段，这里统一补齐
-        from . import audit, courses
+        from . import audit, courses, cv
         audit.ensure_fields(self)
         # 同理：课程开放设置与访问令牌、资料条目 id
         courses.ensure_fields(self)
+        # 个人简历：固定链接令牌与区块开关（此处无 user，不做存量补种）
+        cv.ensure_fields(self)
 
     def migrate(self, data: dict) -> dict:
         """把任意来源的数据补齐为完整结构（供导入校验后调用）。"""

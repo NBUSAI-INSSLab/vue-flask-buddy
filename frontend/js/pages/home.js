@@ -16,7 +16,8 @@
     { label: "加待办", icon: "check", tone: "indigo", action: "form-todo" },
     { label: "学术交流", icon: "globe", tone: "teal", action: "nav-exchanges" },
     { label: "常用工具", icon: "wrench", tone: "amber", action: "nav-tools" },
-    { label: "学生指导", icon: "users", tone: "green", action: "nav-students" }
+    { label: "学生指导", icon: "users", tone: "green", action: "nav-students" },
+    { label: "常用网站", icon: "link", tone: "blue", action: "nav-links" }
   ];
 
   var Home = {
@@ -45,29 +46,8 @@
       },
 
       /* ---------------- 常用网站 ---------------- */
-      allSites: function () {
-        return this.act.list("links").slice().sort(function (a, b) {
-          var d = (Number(a.sort) || 0) - (Number(b.sort) || 0);
-          return d !== 0 ? d : String(a.name || "").localeCompare(String(b.name || ""));
-        });
-      },
-      /* 管理模式下显示全部（便于拖动排序），平时按分组过滤 */
-      sites: function () {
-        if (this.siteEdit || this.siteGroup === "all") return this.allSites;
-        var g = this.siteGroup;
-        return this.allSites.filter(function (s) { return (s.group || "其他") === g; });
-      },
-      siteTabs: function () {
-        var counts = {};
-        this.allSites.forEach(function (s) {
-          var g = s.group || "其他";
-          counts[g] = (counts[g] || 0) + 1;
-        });
-        var order = U.LINK_GROUPS;
-        return order.filter(function (g) { return counts[g]; }).map(function (g) {
-          return { key: g, label: g, count: counts[g] };
-        });
-      },
+      /* 网站导航已拆为独立页面（发展区 → 常用网站），首页只保留概览与快捷入口 */
+
       statCards: function () {
         var st = this.S.stats;
         return [
@@ -160,79 +140,9 @@
       "        </div></div></div>" +
       "    </div>" +
       "  </div>" +
-
-      /* 常用网站（手动维护 + 自动抓取图标） */
-      '  <section class="card site-section">' +
-      '    <div class="card-head">' +
-      '      <h3><span class="ch-ico"><fwb-icon name="globe"/></span>常用网站' +
-      '        <small class="sh-count" v-if="allSites.length">共 {{ allSites.length }} 个</small></h3>' +
-      '      <div class="site-tools">' +
-      '        <template v-if="siteEdit">' +
-      '          <button class="btn ghost sm" @click="addSite"><fwb-icon name="plus"/>添加网站</button>' +
-      '          <button class="btn primary sm" @click="siteEdit = false"><fwb-icon name="check"/>完成</button>' +
-      "        </template>" +
-      '        <button v-else class="btn ghost sm" @click="siteEdit = true"><fwb-icon name="edit"/>管理网站</button>' +
-      "      </div>" +
-      "    </div>" +
-      '    <div class="card-body">' +
-      '      <div class="site-tabs" v-if="siteTabs.length > 1 && !siteEdit">' +
-      '        <button class="site-tab" :class="{ on: siteGroup === \'all\' }" @click="siteGroup = \'all\'">' +
-      "          全部<b>{{ allSites.length }}</b></button>" +
-      '        <button v-for="t in siteTabs" :key="t.key" class="site-tab"' +
-      '                :class="{ on: siteGroup === t.key }" @click="siteGroup = t.key">' +
-      "          {{ t.label }}<b>{{ t.count }}</b></button>" +
-      "      </div>" +
-
-      '      <div v-if="!allSites.length" class="empty" style="padding:30px 0">' +
-      '        <fwb-icon name="globe" :size="38"/><p>还没有常用网站，添加后可一键直达</p>' +
-      '        <button class="btn ghost sm mt-2" @click="addSite"><fwb-icon name="plus"/>添加网站</button>' +
-      "      </div>" +
-      '      <div v-else-if="!sites.length" class="empty" style="padding:30px 0"><p>该分组下暂无网站</p></div>' +
-
-      '      <div v-else class="site-grid">' +
-      '        <div v-for="s in sites" :key="s.id" class="site-card"' +
-      '             :class="{ editing: siteEdit, dragging: dragId === s.id, over: overId === s.id }"' +
-      '             :title="siteTip(s)" :draggable="siteEdit"' +
-      '             @dragstart="onDragStart(s, $event)" @dragover.prevent="onDragOver(s, $event)"' +
-      '             @drop.prevent="onDrop(s, $event)" @dragend="onDragEnd">' +
-      '          <a class="sc-link" :href="s.url" target="_blank" rel="noopener noreferrer"' +
-      '             @click="onSiteClick($event)">' +
-      '            <span class="sc-ico">' +
-      '              <span class="sc-fb" :style="{ background: U.siteTone(s.name, s.url) }">{{ U.siteLetter(s.name, s.url) }}</span>' +
-      '              <img v-if="!iconFailed[s.id]" :key="s.url" :src="iconOf(s)" :alt="s.name"' +
-      '                   @load="iconOk[s.id] = true" :class="{ on: iconOk[s.id] }"' +
-      '                   @error="iconFailed[s.id] = true">' +
-      "            </span>" +
-      '            <span class="sc-meta">' +
-      '              <b class="sc-name">{{ s.name }}</b>' +
-      '              <small class="sc-host">{{ U.siteHost(s.url) }}</small>' +
-      "            </span>" +
-      '            <span class="sc-go" v-if="!siteEdit"><fwb-icon name="external"/></span>' +
-      "          </a>" +
-      '          <span class="sc-ops" v-if="siteEdit">' +
-      '            <button class="sc-op" title="编辑" @click="editSite(s)"><fwb-icon name="edit"/></button>' +
-      '            <button class="sc-op del" title="删除" @click="delSite(s)"><fwb-icon name="trash"/></button>' +
-      "          </span>" +
-      "        </div>" +
-      '        <button v-if="siteEdit" class="site-card site-add" @click="addSite">' +
-      '          <fwb-icon name="plus"/><span>添加网站</span></button>' +
-      "      </div>" +
-
-      '      <p class="site-hint" v-if="siteEdit">' +
-      '        <fwb-icon name="info"/>拖动卡片可调整顺序；图标由服务端自动抓取并缓存，抓不到时显示首字母头像。</p>' +
-      "    </div>" +
-      "  </section>" +
       "</div>",
     data: function () {
-      return {
-        QUICK: QUICK,
-        siteEdit: false,     // 是否处于「管理」模式
-        siteGroup: "all",    // 当前分组筛选
-        dragId: "",          // 正在拖动的网站 id
-        overId: "",          // 拖动悬停的目标网站 id
-        iconOk: {},          // 图标加载成功（渐显）
-        iconFailed: {}       // 图标加载失败（保留首字母头像）
-      };
+      return { QUICK: QUICK };
     },
     methods: {
       dotColor: function (type) {
@@ -256,63 +166,7 @@
       runQuick: function (q) {
         if (q.action.indexOf("form-") === 0) this.forms.openForm(q.action.slice(5), null);
         else if (q.action.indexOf("nav-") === 0) this.act.go(q.action.slice(4));
-      },
-
-      /* ---------------- 常用网站 ---------------- */
-      iconOf: function (s) { return FWB.api.links.iconUrl(s.url, s.name); },
-      siteTip: function (s) {
-        return s.name + (s.note ? " · " + s.note : "") + "\n" + s.url;
-      },
-      /* 管理模式：链接不跳转，避免误点离开工作台 */
-      onSiteClick: function (ev) { if (this.siteEdit) ev.preventDefault(); },
-
-      openLinkForm: function (link) {
-        this.act.openModal({
-          component: "fwb-link-edit",
-          title: link ? "编辑网站" : "添加网站",
-          props: { link: link, groups: U.LINK_GROUPS }
-        });
-      },
-      addSite: function () { this.openLinkForm(null); },
-      editSite: function (s) { this.openLinkForm(s); },
-
-      delSite: async function (s) {
-        var self = this;
-        await this.act.confirmDelete("确定从首页移除「" + s.name + "」吗？", async function () {
-          await self.act.removeSiteLink(s.id);
-        });
-        // 删掉的正好是当前筛选分组里的最后一个 → 回到「全部」，避免看到空列表
-        if (this.siteGroup !== "all" && !this.allSites.some(function (x) {
-          return (x.group || "其他") === self.siteGroup;
-        })) this.siteGroup = "all";
-      },
-
-      /* ---------------- 拖动排序 ---------------- */
-      onDragStart: function (s, ev) {
-        if (!this.siteEdit) return;
-        this.dragId = s.id;
-        if (ev.dataTransfer) {
-          ev.dataTransfer.effectAllowed = "move";
-          try { ev.dataTransfer.setData("text/plain", s.id); } catch (e) { /* 忽略 */ }
-        }
-      },
-      onDragOver: function (s) {
-        if (!this.siteEdit || !this.dragId || this.dragId === s.id) return;
-        this.overId = s.id;
-      },
-      onDrop: function (s) {
-        var from = this.dragId;
-        this.onDragEnd();
-        if (!this.siteEdit || !from || from === s.id) return;
-        var ids = this.allSites.map(function (x) { return x.id; });
-        var fi = ids.indexOf(from), ti = ids.indexOf(s.id);
-        if (fi < 0 || ti < 0) return;
-        ids.splice(ti, 0, ids.splice(fi, 1)[0]);
-        this.act.reorderSiteLinks(ids).catch(function (e) {
-          FWB.store.act.toast("排序保存失败：" + ((e && e.message) || e), "error");
-        });
-      },
-      onDragEnd: function () { this.dragId = ""; this.overId = ""; }
+      }
     }
   };
 

@@ -41,9 +41,11 @@
 
     profile: {},
     courseShare: null,   // 当前课程详情页的开放概况（令牌 / 可见性 / 资料计数）
+    cv: null,            // 个人简历发布概况（固定链接 / 公开开关 / 区块开关与条目数）
     data: {
       projects: [], literature: [], courses: [], students: [], events: [], todos: [],
       exchanges: [], teachings: [], achievements: [], developments: [], tools: [], tool_runs: [],
+      educations: [], services: [],
       links: []
     },
     stats: {},
@@ -264,6 +266,7 @@
       var specs = await api.specs();
       state.specs = specs || {};
       state.ready = true;
+      await actions.loadCv();   // 简历发布概况（失败不影响工作台其余部分）
     },
 
     async refresh() {
@@ -314,6 +317,53 @@
     async saveProfile(data) {
       state.profile = await api.saveProfile(data);
       return state.profile;
+    },
+
+    /* ---------------- 个人简历 ---------------- */
+    /** 拉取发布概况（公开开关 / 固定链接 / 区块开关与条目数） */
+    async loadCv() {
+      try {
+        state.cv = await api.cv.overview();
+      } catch (e) {
+        state.cv = null;
+      }
+      return state.cv;
+    },
+    async setCvPublished(published) {
+      state.cv = await api.cv.setVisibility(published);
+      return state.cv;
+    },
+    async setCvSections(patch) {
+      state.cv = await api.cv.setSections(patch);
+      return state.cv;
+    },
+    /** 更换固定链接：旧链接立即失效，需要重新发给别人 */
+    async rotateCvToken() {
+      var res = await api.cv.rotateToken();
+      if (state.cv) {
+        state.cv.token = res.token;
+        state.cv.path = res.path;
+        state.cv.url = res.url;
+      }
+      return res;
+    },
+    /** 保存简历基本信息（/api/profile 合并写入，name 必填） */
+    async saveCvProfile(payload) {
+      var next = Object.assign({}, state.profile, payload, { name: (payload.name || state.profile.name || "").trim() });
+      state.profile = await api.saveProfile(next);
+      await actions.loadCv();
+      return state.profile;
+    },
+    async uploadCvAvatar(file) {
+      var res = await api.cv.uploadAvatar(file);
+      state.profile.avatar = (res.avatar || {}).stored || "";
+      await actions.loadCv();
+      return res;
+    },
+    async removeCvAvatar() {
+      await api.cv.removeAvatar();
+      state.profile.avatar = "";
+      await actions.loadCv();
     },
 
     /* ---------------- 数据管理 ---------------- */
@@ -368,6 +418,27 @@
       var res = await api.courses.deleteMaterial(id, mid);
       actions.syncCourseDoc({ id: id, materials: res.materials });
       await actions.refreshStats();
+      return res;
+    },
+    /** 保存助教名单、联系方式与教学日历（助教 / QQ 群 / 日历行同步回课程文档） */
+    async saveCourseContact(id, payload) {
+      var res = await api.courses.saveContact(id, payload);
+      actions.syncCourseDoc({
+        id: id, calendar: res.calendar, qqGroup: res.qqGroup, assistants: res.assistants
+      });
+      return res;
+    },
+    async uploadCourseQr(id, file) {
+      var res = await api.courses.uploadQr(id, file);
+      actions.syncCourseDoc({
+        id: id, calendar: res.calendar, qqGroup: res.qqGroup,
+        assistants: res.assistants, hasQr: true
+      });
+      return res;
+    },
+    async removeCourseQr(id) {
+      var res = await api.courses.removeQr(id);
+      actions.syncCourseDoc({ id: id, hasQr: false });
       return res;
     },
     /** 把课程文档的部分字段合并回本地列表，避免整表重拉 */

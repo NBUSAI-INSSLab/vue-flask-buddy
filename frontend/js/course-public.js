@@ -28,6 +28,12 @@
     "实验": "teal", "习题": "indigo", "参考书": "gray", "其他": "gray"
   };
 
+  /* 教学日历「形式」→ 徽标配色 */
+  var CAL_TONE = {
+    "讲授": "blue", "实验": "teal", "上机": "indigo", "习题": "violet",
+    "实践": "amber", "答疑": "teal", "考试": "red", "其他": "gray"
+  };
+
   function token() {
     var m = /^\/c\/([0-9a-zA-Z]+)\/?$/.exec(global.location.pathname || "");
     return m ? m[1] : "";
@@ -42,7 +48,8 @@
         state: "invalid",      // invalid | closed | scheduled | expired | error
         message: "",
         lockedCourse: {},
-        toast: ""
+        toast: "",
+        zoom: false            // 群二维码放大查看
       };
     },
     computed: {
@@ -61,6 +68,18 @@
           return s + (parseInt(parseFloat(x.hours), 10) || 0);
         }, 0);
       },
+      /* 教学日历合计学时（教师手填的学时，能转数字才计入） */
+      calHours: function () {
+        if (!this.data) return 0;
+        return (this.data.calendar || []).reduce(function (s, r) {
+          var n = parseInt(parseFloat(r.hours), 10);
+          return s + (isNaN(n) ? 0 : n);
+        }, 0);
+      },
+      /* 群二维码地址：时间戳防缓存（教师更换二维码后学生刷新即见） */
+      qrUrl: function () {
+        return "/api/public/courses/" + token() + "/qr?t=" + this._qrStamp;
+      },
       openWindow: function () {
         if (!this.data) return "";
         var v = this.data.visibility;
@@ -71,6 +90,43 @@
     methods: {
       tone: function (t) { return TONE[t] || "gray"; },
       icon: function (t) { return t === "课件" ? "ppt" : (t === "实验" ? "flask" : "file"); },
+      /** 电话号码 → tel: 链接（去掉空格与连字符，座机分机号保留） */
+      telOf: function (v) { return String(v || "").replace(/[\s-]/g, ""); },
+
+      /* ---------------- 教学日历 ---------------- */
+      calTone: function (t) { return CAL_TONE[t] || "gray"; },
+      /** 2026-08-13 → 08.13（跨年时补年份） */
+      calDate: function (d) {
+        var s = String(d || "");
+        var m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(s);
+        if (!m) return s;
+        var now = new Date();
+        var y = Number(m[1]);
+        return (y === now.getFullYear() ? "" : y + ".") +
+          ("0" + m[2]).slice(-2) + "." + ("0" + m[3]).slice(-2);
+      },
+      /** 日期 → 周几（解析失败返回空） */
+      calWeekday: function (d) {
+        var m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(d || ""));
+        if (!m) return "";
+        var day = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).getDay();
+        return "周" + "日一二三四五六".charAt(day);
+      },
+      /** 该行日期是否落在本周（周一到周日），用于高亮「本周」 */
+      isThisWeek: function (d) {
+        var m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(d || ""));
+        if (!m) return false;
+        var day = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+        day.setHours(0, 0, 0, 0);
+        var now = new Date();
+        now.setHours(0, 0, 0, 0);
+        var monday = new Date(now);
+        monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+        var sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+        return day >= monday && day <= sunday;
+      },
+
       fileUrl: function (m) {
         return "/api/public/courses/" + token() + "/materials/" + encodeURIComponent(m.id) + "/download";
       },
@@ -97,7 +153,14 @@
           .then(function (out) {
             var body = out.body || {};
             if (out.res.ok && body.ok) {
-              self.data = body.data;
+              self._qrStamp = Date.now();   // 二维码防缓存时间戳，渲染前就绪
+              var d = body.data || {};
+              // 兼容旧后端（没有 assistants 字段时按空名单渲染，页面不会报错）
+              d.assistants = d.assistants || [];
+              d.calendar = d.calendar || [];
+              d.syllabus = d.syllabus || [];
+              d.materials = d.materials || [];
+              self.data = d;
               self.loading = false;
               return;
             }

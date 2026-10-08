@@ -76,6 +76,28 @@ def _td(prefix, i, title, due_off, priority="mid", tag="", done=False):
             "priority": priority, "done": done, "tag": tag}
 
 
+# ---- 个人简历：教育经历 / 社会服务（各教师按自身学缘与兼职情况给出） ----
+def _edu(prefix, i, frm, to, school, major, degree, supervisor="", note=""):
+    return {"id": f"{prefix}ed{i}", "from": frm, "to": to, "school": school,
+            "major": major, "degree": degree, "supervisor": supervisor, "note": note}
+
+
+def _svc(prefix, i, kind, org, role, frm, to="", note=""):
+    return {"id": f"{prefix}sv{i}", "kind": kind, "org": org, "role": role,
+            "from": frm, "to": to, "note": note}
+
+
+def _cv_profile(base: dict, ename: str, tagline: str, bio: str, directions) -> dict:
+    """教师个人信息 + 个人简历展示字段（公开简历页读取这些键）。"""
+    out = dict(base)
+    out.update({
+        "ename": ename, "tagline": tagline, "bio": bio, "directions": list(directions),
+        "phone": "", "homepage": "", "orcid": "", "scholar": "",
+        "address": "", "avatar": "",
+    })
+    return out
+
+
 def _pack(profile, **colls) -> dict:
     """按集合打包一份完整工作台数据（缺省集合为空，工具清单统一）。"""
     data = {c: [] for c in config.COLLECTIONS}
@@ -106,8 +128,16 @@ def demo_seed(profile: dict) -> dict:
 # 张伟：副教授 · 物联网与边缘智能（3 项目 / 4 文献 / 3 学生 / 3 教学 / 5 成果 / 3 交流）
 # --------------------------------------------------------------------------- #
 def _zhangwei() -> dict:
-    p = {"name": "张伟", "title": "副教授", "dept": "计算机科学与技术学院",
-         "email": "zhangwei@university.edu.cn", "office": "信息楼 B-402"}
+    p = _cv_profile(
+        {"name": "张伟", "title": "副教授", "dept": "计算机科学与技术学院",
+         "email": "zhangwei@university.edu.cn", "office": "信息楼 B-402"},
+        ename="Wei Zhang",
+        tagline="低功耗物联网与边缘智能",
+        bio=("研究方向为低功耗物联网与边缘智能，重点关注大规模感知节点的协同调度与"
+             "能效优化。主持浙江省自然科学基金探索项目，参与国家重点研发计划子课题，"
+             "在物联网与传感网络方向发表论文多篇，授权发明专利与软件著作权若干。"),
+        directions=["低功耗物联网", "边缘智能", "无线传感网络", "协同调度"],
+    )
     projects = [
         {"id": "zwp1", "name": "面向智慧园区的低功耗物联网感知节点协同调度研究",
          "code": "ZJNSF-LY24F020015", "type": "浙江省自然科学基金探索项目", "role": "主持",
@@ -297,17 +327,35 @@ def _zhangwei() -> dict:
         _td("zw", 2, "批改物联网课程实验报告", 4, "mid", "教学", True),
         _td("zw", 3, "回复 Sensors 期刊审稿意见", 8, "high", "成果管理"),
     ]
+    educations = [
+        _edu("zw", 1, "2013-09", "2018-06", "东南大学", "信息与通信工程", "博士",
+             "潘志文 教授", "研究方向为无线传感网与边缘计算。"),
+        _edu("zw", 2, "2009-09", "2013-06", "南京邮电大学", "通信工程", "学士"),
+    ]
+    services = [
+        _svc("zw", 1, "期刊审稿", "IEEE Internet of Things Journal", "审稿人", "2021-03"),
+        _svc("zw", 2, "学术兼职", "中国通信学会物联网委员会", "委员", "2022-09"),
+    ]
     return _pack(p, projects=projects, literature=literature, students=students,
                  teachings=teachings, achievements=achievements, exchanges=exchanges,
-                 developments=developments, courses=courses, events=events, todos=todos)
+                 developments=developments, courses=courses, events=events, todos=todos,
+                 educations=educations, services=services)
 
 
 # --------------------------------------------------------------------------- #
 # 李敏：副教授 · 计算机视觉与工业检测（2 项目 / 3 文献 / 2 学生 / 2 教学 / 4 成果 / 2 交流）
 # --------------------------------------------------------------------------- #
 def _limin() -> dict:
-    p = {"name": "李敏", "title": "副教授", "dept": "人工智能学院",
-         "email": "limin@university.edu.cn", "office": "智能楼 508"}
+    p = _cv_profile(
+        {"name": "李敏", "title": "副教授", "dept": "人工智能学院",
+         "email": "limin@university.edu.cn", "office": "智能楼 508"},
+        ename="Min Li",
+        tagline="工业视觉检测与缺陷分割",
+        bio=("研究方向为计算机视觉与工业检测，聚焦复杂光照条件下的表面缺陷分割与"
+             "小样本学习。主持国家自然科学基金青年项目，研究成果在金属零件、光伏"
+             "组件等产线完成部署验证，担任 Pattern Recognition 等期刊审稿人。"),
+        directions=["计算机视觉", "工业缺陷检测", "图像分割", "小样本学习"],
+    )
     projects = [
         {"id": "lmp1", "name": "复杂光照条件下的工业零件表面缺陷检测方法研究",
          "code": "NSFC-62306124", "type": "国家自然科学基金青年项目", "role": "主持",
@@ -455,17 +503,35 @@ def _limin() -> dict:
         _td("lm", 2, "提交 CVPR 审稿意见", 5, "high", "学术交流"),
         _td("lm", 3, "整理缺陷数据集标注规范", 12, "mid", "科研项目"),
     ]
+    educations = [
+        _edu("lm", 1, "2014-09", "2019-06", "华中科技大学", "模式识别与智能系统", "博士",
+             "桑农 教授", "从事工业视觉缺陷检测与度量学习研究。"),
+        _edu("lm", 2, "2010-09", "2014-06", "武汉理工大学", "自动化", "学士"),
+    ]
+    services = [
+        _svc("lm", 1, "期刊审稿", "Pattern Recognition", "审稿人", "2020-06"),
+        _svc("lm", 2, "基金评审", "国家自然科学基金委员会", "通讯评议专家", "2023-05"),
+    ]
     return _pack(p, projects=projects, literature=literature, students=students,
                  teachings=teachings, achievements=achievements, exchanges=exchanges,
-                 developments=developments, courses=courses, events=events, todos=todos)
+                 developments=developments, courses=courses, events=events, todos=todos,
+                 educations=educations, services=services)
 
 
 # --------------------------------------------------------------------------- #
 # 王强：讲师 · 网络与云计算（1 项目 / 2 文献 / 1 学生 / 2 教学 / 2 成果 / 1 交流）
 # --------------------------------------------------------------------------- #
 def _wangqiang() -> dict:
-    p = {"name": "王强", "title": "讲师", "dept": "计算机科学与技术学院",
-         "email": "wangqiang@university.edu.cn", "office": "信息楼 B-215"}
+    p = _cv_profile(
+        {"name": "王强", "title": "讲师", "dept": "计算机科学与技术学院",
+         "email": "wangqiang@university.edu.cn", "office": "信息楼 B-215"},
+        ename="Qiang Wang",
+        tagline="数据中心网络与传输层拥塞控制",
+        bio=("研究方向为数据中心网络与传输层协议，关注 BBR 类拥塞控制算法在浅缓冲"
+             "交换机上的公平性与收敛性。主持校级青年基金，主讲计算机网络、云计算"
+             "等课程，指导本科生毕业设计与学科竞赛。"),
+        directions=["数据中心网络", "拥塞控制", "云计算", "网络性能建模"],
+    )
     projects = [
         {"id": "wqp1", "name": "数据中心网络拥塞控制算法的性能建模与优化",
          "code": "XQ-2025-031", "type": "校级青年基金", "role": "主持",
@@ -564,17 +630,35 @@ def _wangqiang() -> dict:
         _td("wq", 1, "完成云计算课程实验环境搭建", 18, "mid", "教学"),
         _td("wq", 2, "整理专利技术交底书", 7, "high", "成果管理"),
     ]
+    educations = [
+        _edu("wq", 1, "2017-09", "2022-06", "北京邮电大学", "计算机科学与技术", "博士",
+             "苏文彬 教授", "研究方向为数据中心网络与传输层拥塞控制。"),
+        _edu("wq", 2, "2013-09", "2017-06", "西安电子科技大学", "软件工程", "学士"),
+    ]
+    services = [
+        _svc("wq", 1, "期刊审稿", "Computer Networks", "审稿人", "2024-02"),
+        _svc("wq", 2, "公共服务", "学院青年教师学术联谊会", "学术活动组织人", "2025-03"),
+    ]
     return _pack(p, projects=projects, literature=literature, students=students,
                  teachings=teachings, achievements=achievements, exchanges=exchanges,
-                 developments=developments, courses=courses, events=events, todos=todos)
+                 developments=developments, courses=courses, events=events, todos=todos,
+                 educations=educations, services=services)
 
 
 # --------------------------------------------------------------------------- #
 # 陈静：教授 · 数据挖掘与教育大数据（3 项目 / 5 文献 / 4 学生 / 3 教学 / 6 成果 / 4 交流）
 # --------------------------------------------------------------------------- #
 def _chenjing() -> dict:
-    p = {"name": "陈静", "title": "教授", "dept": "人工智能学院",
-         "email": "chenjing@university.edu.cn", "office": "智能楼 612"}
+    p = _cv_profile(
+        {"name": "陈静", "title": "教授", "dept": "人工智能学院",
+         "email": "chenjing@university.edu.cn", "office": "智能楼 612"},
+        ename="Jing Chen",
+        tagline="数据挖掘与教育大数据",
+        bio=("长期从事数据挖掘与教育大数据研究，构建面向高校学业数据的因果推断"
+             "框架与学业预警模型。主持国家自然科学基金面上项目，研究成果在省内多所"
+             "高校教学质量监测平台落地，担任中国人工智能学会机器学习专委会委员。"),
+        directions=["数据挖掘", "教育大数据", "因果推断", "学习分析"],
+    )
     projects = [
         {"id": "cjp1", "name": "教育大数据的因果推断与学业预警模型研究",
          "code": "NSFC-62076111", "type": "国家自然科学基金面上项目", "role": "主持",
@@ -782,9 +866,20 @@ def _chenjing() -> dict:
         _td("cj", 3, "审阅林涛中期检查材料", 5, "mid", "学生指导"),
         _td("cj", 4, "安排教学团队课程资源评审", 20, "low", "教学", True),
     ]
+    educations = [
+        _edu("cj", 1, "2007-09", "2012-06", "中国科学技术大学", "计算机应用技术", "博士",
+             "许承志 教授", "研究方向为数据挖掘与教育数据建模。"),
+        _edu("cj", 2, "2003-09", "2007-06", "安徽大学", "计算机科学与技术", "学士"),
+    ]
+    services = [
+        _svc("cj", 1, "学会任职", "中国人工智能学会机器学习专业委员会", "委员", "2021-11"),
+        _svc("cj", 2, "期刊审稿", "IEEE Transactions on Knowledge and Data Engineering", "审稿人", "2019-04"),
+        _svc("cj", 3, "基金评审", "国家自然科学基金委员会", "通讯评议专家", "2022-06"),
+    ]
     return _pack(p, projects=projects, literature=literature, students=students,
                  teachings=teachings, achievements=achievements, exchanges=exchanges,
-                 developments=developments, courses=courses, events=events, todos=todos)
+                 developments=developments, courses=courses, events=events, todos=todos,
+                 educations=educations, services=services)
 
 
 # --------------------------------------------------------------------------- #
@@ -804,7 +899,18 @@ def initial_data(teacher: dict) -> dict:
     if mode == "full":
         return seed.full_seed()
     if mode == "empty":
-        return empty_seed({k: teacher.get(k, "") for k in ("name", "title", "dept", "email", "office")})
+        # 空白工作台也要有完整的个人信息外壳（含简历字段），否则前端表单取不到键
+        profile = {k: copy.deepcopy(v) for k, v in seed.PROFILE.items()}
+        profile.update({k: "" for k in (
+            "ename", "tagline", "bio", "phone", "homepage", "orcid",
+            "scholar", "address", "avatar",
+        )})
+        profile["directions"] = []
+        for k in ("name", "title", "dept", "email", "office"):
+            if teacher.get(k):
+                profile[k] = teacher[k]
+        profile["name"] = teacher.get("name") or "未设置"
+        return empty_seed(profile)
     builder = _SEED_BUILDERS.get(mode)
     return builder() if builder else seed.full_seed()
 

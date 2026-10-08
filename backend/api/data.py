@@ -24,6 +24,8 @@ SEARCH_FIELDS = {
     "teachings": ("name", "code", "note", "type"),
     "achievements": ("title", "venue", "authors", "note", "type", "level"),
     "developments": ("title", "target", "current", "category"),
+    "educations": ("school", "major", "degree", "supervisor", "note"),
+    "services": ("org", "role", "kind", "note"),
     "tools": ("name", "desc", "category"),
     "links": ("name", "url", "group", "note"),
 }
@@ -33,7 +35,8 @@ SEARCH_PAGE = {
     "projects": "projects", "literature": "literature", "courses": "courses",
     "students": "students", "events": "schedule", "todos": "dashboard",
     "exchanges": "exchanges", "teachings": "teachings", "achievements": "achievements",
-    "developments": "developments", "tools": "tools", "links": "dashboard",
+    "developments": "developments", "educations": "cv", "services": "cv",
+    "tools": "tools", "links": "dashboard",
 }
 
 # 搜索结果条目前缀
@@ -41,6 +44,7 @@ SEARCH_LABEL = {
     "projects": "科研项目", "literature": "文献", "courses": "课程",
     "students": "学生", "events": "日程", "todos": "待办", "exchanges": "学术交流",
     "teachings": "教学", "achievements": "成果", "developments": "个人发展", "tools": "工具",
+    "educations": "教育经历", "services": "社会服务",
     "links": "常用网站",
 }
 
@@ -203,7 +207,7 @@ def _title_of(coll: str, item: dict) -> str:
 def _sub_of(coll: str, item: dict) -> str:
     parts = []
     for k in ("code", "type", "date", "journal", "venue", "status", "stage",
-              "category", "direction", "group"):
+              "category", "direction", "group", "degree", "school", "kind", "org", "role"):
         if item.get(k):
             parts.append(str(item[k]))
     return " · ".join(parts[:3])

@@ -84,7 +84,7 @@ async function main() {
   await page.waitForSelector(".nav-item", { timeout: 15000 });
 
   const navCount = await page.locator(".nav-item").count();
-  check(navCount === 11, "侧边栏渲染 11 个导航项", "实际 " + navCount);
+  check(navCount === 13, "侧边栏渲染 13 个导航项", "实际 " + navCount);
 
   const cloak = await page.locator("#app[v-cloak]").count();
   check(cloak === 0, "Vue 挂载后移除 v-cloak（首屏可见）");
@@ -94,9 +94,6 @@ async function main() {
 
   const userName = (await page.locator(".user-name").innerText()).trim();
   check(userName.includes("江先亮"), "侧边栏展示教师姓名", userName);
-
-  const cd = await page.locator(".countdown-card .cd-days").count();
-  check(cd === 1, "侧边栏倒计时卡片渲染");
 
   const stats = await page.locator(".stat-card").count();
   check(stats === 4, "首页 4 张统计卡", "实际 " + stats);

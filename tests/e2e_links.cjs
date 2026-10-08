@@ -1,5 +1,5 @@
 /* =====================================================================
-   e2e_links.cjs —— 首页「常用网站」端到端验收（Playwright + Chromium）
+   e2e_links.cjs —— 「常用网站」独立页面端到端验收（Playwright + Chromium）
 
    前置：先启动服务（另开终端）
        python run.py --port 5173 --prod
@@ -7,7 +7,7 @@
    运行：
        node tests/e2e_links.cjs [baseUrl]
 
-   校验点：区块渲染与分组筛选、图标真实抓取、新增/编辑/删除、
+   校验点：独立页面渲染与分组筛选、图标真实抓取、新增/编辑/删除、
            拖动排序落库、管理模式交互、深色主题与移动端适配、控制台无报错
    ===================================================================== */
 const { createRequire } = require("node:module");
@@ -69,8 +69,12 @@ async function main() {
   }, [TEST_SITE.url]);
   await page.reload({ waitUntil: "networkidle" });   // 让前端重新拉一次，丢弃被删掉的残留
   await page.waitForSelector(".sidebar .nav-item", { timeout: 15000 });
-  await page.locator(".nav-item", { hasText: "工作首页" }).first().click();
-  await page.waitForSelector(".site-section", { timeout: 10000 });
+  /* 网站导航已从首页拆出：入口在侧边栏「发展区 → 常用网站」 */
+  const goLinks = async () => {
+    await page.locator(".sidebar .nav-item", { hasText: "常用网站" }).first().click();
+    await page.waitForSelector(".site-grid", { timeout: 10000 });
+  };
+  await goLinks();
 
   const cardSel = ".site-grid .site-card:not(.site-add)";
   /* 记下起始顺序，用例结束原样还原（排序用例会真的改库） */
@@ -93,13 +97,13 @@ async function main() {
 
   /* ---------------- 1. 区块与卡片 ---------------- */
   const cards = await page.locator(cardSel).count();
-  check(cards === 12, "首页底部「常用网站」渲染 12 张卡片", "实际 " + cards);
+  check(cards === 12, "独立页面渲染 12 张卡片", "实际 " + cards);
 
-  const headText = (await page.locator(".site-section .card-head h3").innerText()).trim();
-  check(headText.includes("常用网站") && headText.includes("12"), "标题带网站总数", headText);
+  const statText = (await page.locator(".mini-stat").first().innerText()).replace(/\s/g, "");
+  check(statText.includes("12") && statText.includes("网站总数"), "统计卡显示网站总数", statText);
 
-  const host = (await page.locator(cardSel).first().locator(".sc-host").innerText()).trim();
-  check(/^[a-z0-9.-]+$/.test(host) && !host.startsWith("www."), "卡片展示去 www 的主机名", host);
+  const firstMeta = (await page.locator(cardSel).first().locator(".sc-host").innerText()).trim();
+  check(firstMeta.length > 0, "卡片展示备注（无备注时回退主机名）", firstMeta);
 
   const tabs = await page.locator(".site-tabs .site-tab").count();
   check(tabs === 5, "分组筛选含「全部 + 4 组」", "实际 " + tabs);
@@ -148,10 +152,10 @@ async function main() {
   check(!!popup && popupUrl === firstHref.replace(/\/$/, ""), "点击卡片在新标签打开对应站点",
         popupUrl + " vs " + firstHref);
   if (popup) await popup.close();
-  check((await page.locator(".site-section").count()) === 1, "打开站点后仍停留在工作台");
+  check((await page.locator(".mini-stats").count()) === 1, "打开站点后仍停留在工作台");
 
   /* ---------------- 3. 新增网站（自动抓取标题与图标） ---------------- */
-  await page.locator(".site-tools .btn", { hasText: "管理网站" }).click();
+  await page.locator(".toolbar .btn", { hasText: "管理网站" }).click();
   await page.waitForTimeout(200);
   check(await page.locator(".site-card.editing").count() === 12, "进入管理模式后卡片可编辑");
   check(await page.locator(".site-card.site-add").count() === 1, "管理模式露出「添加网站」卡片");
@@ -194,12 +198,13 @@ async function main() {
 
   /* 刷新页面：确认已落库 */
   await page.reload({ waitUntil: "networkidle" });
-  await page.waitForSelector(".site-section", { timeout: 10000 });
+  await page.waitForSelector(".sidebar .nav-item", { timeout: 15000 });
+  await goLinks();
   const afterReload = await page.locator(cardSel + " .sc-name").allInnerTexts();
   check(afterReload.some((n) => n.includes(TEST_SITE.title)), "新增网站刷新后仍在（已写入服务端）");
 
   /* ---------------- 4. 编辑 ---------------- */
-  await page.locator(".site-tools .btn", { hasText: "管理网站" }).click();
+  await page.locator(".toolbar .btn", { hasText: "管理网站" }).click();
   await page.waitForTimeout(200);
   const target = page.locator(cardSel).filter({ hasText: TEST_SITE.title }).first();
   await target.locator(".sc-op[title='编辑']").click();
@@ -243,12 +248,13 @@ async function main() {
         persisted.first + " / " + persisted.second);
 
   await page.reload({ waitUntil: "networkidle" });
-  await page.waitForSelector(".site-section", { timeout: 10000 });
+  await page.waitForSelector(".sidebar .nav-item", { timeout: 15000 });
+  await goLinks();
   const afterReload2 = await page.locator(cardSel + " .sc-name").allInnerTexts();
   check(afterReload2[0] === persisted.first, "刷新后仍保持新顺序", afterReload2[0]);
 
   /* ---------------- 6. 删除 ---------------- */
-  await page.locator(".site-tools .btn", { hasText: "管理网站" }).click();
+  await page.locator(".toolbar .btn", { hasText: "管理网站" }).click();
   await page.waitForTimeout(200);
   await page.locator(cardSel).filter({ hasText: NEW_NAME }).first()
     .locator(".sc-op[title='删除']").click();
@@ -264,16 +270,16 @@ async function main() {
   /* 管理模式点链接不应跳转 */
   await page.locator(cardSel).first().locator("a.sc-link").click();
   await page.waitForTimeout(400);
-  check((await page.locator(".site-section").count()) === 1, "管理模式下点击卡片不跳转");
+  check((await page.locator(".site-grid").count()) === 1, "管理模式下点击卡片不跳转");
 
-  await page.locator(".site-tools .btn", { hasText: "完成" }).click();
+  await page.locator(".toolbar .btn", { hasText: "完成" }).click();
   await page.waitForTimeout(250);
   check(await page.locator(".site-card.editing").count() === 0, "「完成」退出管理模式");
 
   /* ---------------- 7. 深色主题 ---------------- */
   await page.evaluate(() => window.FWB.theme.apply("graphite"));
   await page.waitForTimeout(300);
-  const darkShot = await page.locator(".site-section").screenshot();
+  const darkShot = await page.locator(".site-grid").screenshot();
   check(darkShot.length > 3000, "深色主题下区块正常渲染");
   await shot("12-sites-dark", true);
   await page.evaluate(() => window.FWB.theme.apply("mint"));
@@ -285,10 +291,9 @@ async function main() {
     await page.waitForTimeout(250);
     return page.evaluate(() => {
       const grid = document.querySelector(".site-grid");
-      const sec = document.querySelector(".site-section");
       return {
         cols: getComputedStyle(grid).gridTemplateColumns.split(" ").length,
-        overflow: sec.scrollWidth > document.querySelector(".content").clientWidth + 2,
+        overflow: grid.scrollWidth > document.querySelector(".content").clientWidth + 2,
         cards: document.querySelectorAll(".site-grid .site-card:not(.site-add)").length
       };
     });

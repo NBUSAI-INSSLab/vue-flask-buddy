@@ -12,6 +12,8 @@
   var PROJECT_TYPES = ["国家自然科学基金面上项目", "国家自然科学基金青年项目", "国家重点研发计划",
     "省重点研发计划", "企业横向合作", "国家电网科技项目", "校级项目", "其他"];
   var ACH_TYPES = ["期刊论文", "会议论文", "发明专利", "软件著作权", "技术报告", "科技奖励", "学位论文"];
+  var DEGREES = ["博士", "硕士", "学士", "博士后", "其他"];
+  var SERVICE_KINDS = ["学会任职", "学术兼职", "期刊审稿", "基金评审", "产业服务", "公共服务", "其他"];
   /* 课程封面配色：首项跟随主题主色，其余为固定辅助色 */
   var COURSE_COLORS = [
     "linear-gradient(135deg,var(--primary-700),var(--primary))",
@@ -359,6 +361,70 @@
           return Object.assign({}, m, { priority: map[m.priority] || "mid", done: !!m.done });
         }
       };
+    },
+
+    /* ---------------- 个人简历：教育经历 / 社会服务 / 基本信息 ---------------- */
+    education: function (item) {
+      return {
+        title: item ? "编辑教育经历" : "新增教育经历",
+        submitLabel: "保存",
+        fields: [
+          { name: "school", label: "学校 / 单位", req: true, ph: "如 浙江大学" },
+          { name: "major", label: "专业 / 院系", ph: "如 控制科学与工程" },
+          { name: "degree", label: "学位", type: "select", opts: DEGREES, value: "硕士" },
+          { name: "from", label: "起始时间", ph: "如 2011-09" },
+          { name: "to", label: "结束时间", ph: "如 2016-06；留空表示在读" },
+          { name: "supervisor", label: "导师", ph: "选填" },
+          { name: "note", label: "备注", type: "textarea", rows: 2, ph: "研究方向、论文获奖等（选填）" }
+        ]
+      };
+    },
+
+    service: function (item) {
+      return {
+        title: item ? "编辑社会服务" : "新增社会服务",
+        submitLabel: "保存",
+        fields: [
+          { name: "kind", label: "类型", type: "select", opts: SERVICE_KINDS, value: "学术兼职" },
+          { name: "org", label: "机构 / 组织", req: true, ph: "如 中国计算机学会物联网专业委员会" },
+          { name: "role", label: "担任职务", ph: "如 委员 / 审稿人 / 通讯评议专家" },
+          { name: "from", label: "起始时间", ph: "如 2022-01" },
+          { name: "to", label: "结束时间", ph: "留空表示至今在任" },
+          { name: "note", label: "说明", type: "textarea", rows: 2, ph: "主要工作内容（选填）" }
+        ]
+      };
+    },
+
+    /** 简历基本信息：写回 profile（后端要求 name 必填） */
+    cvProfile: function (profile) {
+      var p = profile || {};
+      return {
+        title: "编辑简历基本信息",
+        submitLabel: "保存",
+        wide: true,
+        fields: [
+          { name: "name", label: "姓名", req: true },
+          { name: "ename", label: "英文名", ph: "如 Xianliang Jiang（选填）" },
+          { name: "title", label: "职称", ph: "如 教授 / 副教授" },
+          { name: "dept", label: "所属学院" },
+          { name: "tagline", label: "一句话定位", ph: "显示在姓名下方，如「面向真实场景的智能感知」", span: 2 },
+          { name: "email", label: "邮箱", type: "email" },
+          { name: "phone", label: "电话", ph: "选填，公开后所有人可见" },
+          { name: "office", label: "办公室" },
+          { name: "address", label: "通讯地址", ph: "选填", span: 2 },
+          { name: "homepage", label: "个人主页", ph: "https://…（选填）" },
+          { name: "orcid", label: "ORCID", ph: "如 0000-0002-1825-0097" },
+          { name: "scholar", label: "学术主页", ph: "谷歌学术 / 知网主页链接（选填）", span: 2 },
+          { name: "directions", label: "研究方向（逗号分隔）", ph: "如 智能物联网, 多模态感知与融合", span: 2 },
+          { name: "bio", label: "个人简介", type: "textarea", rows: 5, span: 2,
+            ph: "显示在简历最前方的整段介绍…" }
+        ],
+        fromModel: function (m) {
+          var dirs = String(m.directions || "").split(/[,，、;；]+/)
+            .map(function (s) { return s.trim(); }).filter(Boolean);
+          return Object.assign({}, m, { directions: dirs });
+        }
+      };
     }
   };
 
@@ -420,7 +486,8 @@
   var COLL = {
     project: "projects", literature: "literature", exchange: "exchanges",
     teaching: "teachings", achievement: "achievements", development: "developments",
-    course: "courses", student: "students", event: "events", todo: "todos"
+    course: "courses", student: "students", event: "events", todo: "todos",
+    education: "educations", service: "services"
   };
 
   var forms = {
@@ -451,6 +518,18 @@
     openToolRunner: openToolRunner,
     openSettings: openSettings,
     openSearch: openSearch,
+
+    /** 简历基本信息（头像在简历页上直接上传，这里只编辑文字字段） */
+    openCvProfile: function () {
+      var act = FWB.store.act;
+      var p = FWB.store.state.profile || {};
+      var spec = specs.cvProfile(p);
+      spec.onSubmit = async function (payload) {
+        await act.saveCvProfile(payload);
+        act.toast("简历信息已保存", "success");
+      };
+      open(spec, Object.assign({}, p, { directions: joinList(p.directions) }));
+    },
 
     /* ---------------- 管理端 ---------------- */
     openTeacherForm: function (user) {

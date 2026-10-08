@@ -81,6 +81,8 @@
     teachings: ["教学管理", "跟进教学任务、大纲进度与教学待办"],
     achievements: ["成果管理", "登记论文、专利、软著与奖励，统计业绩分"],
     developments: ["个人发展", "职称晋升、人才项目、培训进修与考核规划"],
+    cv: ["个人简历", "对外展示的学术简历，内容来自工作台并实时同步"],
+    links: ["常用网站", "学术资源、教学平台与科研工具，分组归类一键直达"],
     tools: ["常用工具", "教学科研高频工具，点击卡片即可运行"]
   };
 
@@ -92,7 +94,7 @@
     teachings: "teachings",
     courses: "courses", "course-detail": "courses",
     students: "students", "student-detail": "students",
-    developments: "developments", tools: "tools"
+    developments: "developments", cv: "cv", links: "links", tools: "tools"
   };
 
   /* 常用网站分组（新增 / 编辑时的下拉项，顺序即展示顺序） */

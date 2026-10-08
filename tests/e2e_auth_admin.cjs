@@ -60,7 +60,7 @@ function check(cond, name, extra) {
   const brand = (await page.locator(".brand-title").innerText()).trim();
   check(brand === "NBUSAI教师工作台", "教师端品牌文案正确", brand);
   const navN = await page.locator(".sidebar .nav-item").count();
-  check(navN === 11, "教师端 11 项导航", "实际 " + navN);
+  check(navN === 13, "教师端 13 项导航", "实际 " + navN);
   check((await page.locator(".user-card .icon-btn[title='退出登录']").count()) === 1, "教师端提供退出入口");
   const teacherName = (await page.locator(".user-name").innerText()).trim();
   check(teacherName.indexOf("江先亮") === 0, "侧边栏显示登录教师", teacherName);

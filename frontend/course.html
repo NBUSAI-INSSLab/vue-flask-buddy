@@ -68,6 +68,8 @@
           <span v-if="data.credits">{{ data.credits }} 学分</span>
           <span v-if="data.hours">{{ data.hours }} 学时</span>
           <span>{{ data.syllabus.length }} 章大纲</span>
+          <span v-if="data.calendar.length">{{ data.calendar.length }} 周日历</span>
+          <span v-if="data.assistants.length">{{ data.assistants.length }} 位助教</span>
           <span>{{ data.materialCount }} 份资料</span>
         </div>
       </div>
@@ -99,6 +101,28 @@
                 </tbody>
               </table>
             </div>
+          </section>
+
+          <section v-if="data.calendar.length" class="pub-card">
+            <h2>教学日历<span class="pub-h2-note" v-if="calHours">共 {{ data.calendar.length }} 周 · {{ calHours }} 学时</span></h2>
+            <div class="pub-table-wrap">
+              <table class="pub-table cal-table">
+                <thead>
+                  <tr><th class="cal-w">周次</th><th class="cal-d">日期</th><th>教学内容</th><th class="cal-h">学时</th><th class="cal-t">形式</th><th class="cal-n">备注</th></tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(r, i) in data.calendar" :key="i" :class="{ 'cal-now': isThisWeek(r.date) }">
+                    <td class="pub-strong">{{ r.week }}<b v-if="isThisWeek(r.date)" class="cal-flag">本周</b></td>
+                    <td class="cal-date">{{ calDate(r.date) }}<small v-if="calWeekday(r.date)">{{ calWeekday(r.date) }}</small></td>
+                    <td>{{ r.topic }}</td>
+                    <td>{{ r.hours || "—" }}</td>
+                    <td><span class="pub-tag" :class="'cal-' + calTone(r.type)">{{ r.type || "—" }}</span></td>
+                    <td class="cal-note">{{ r.note || "—" }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="cal-tip"><fwb-icon name="info" :size="14"></fwb-icon>具体安排如有调整，以课程群通知为准。</p>
           </section>
 
           <section class="pub-card">
@@ -136,10 +160,55 @@
               <fwb-icon name="send" :size="15"></fwb-icon>
               <a :href="'mailto:' + data.teacher.email">{{ data.teacher.email }}</a>
             </div>
+            <div v-if="data.teacher.phone" class="pub-contact">
+              <fwb-icon name="phone" :size="15"></fwb-icon>
+              <a :href="'tel:' + data.teacher.phone.replace(/\s/g, '')">{{ data.teacher.phone }}</a>
+            </div>
             <div v-if="data.teacher.office" class="pub-contact">
               <fwb-icon name="pin" :size="15"></fwb-icon>
               <span>{{ data.teacher.office }}</span>
             </div>
+          </section>
+
+          <section v-if="data.assistants.length" class="pub-card">
+            <h2>课程助教<span class="pub-h2-note">{{ data.assistants.length }} 位</span></h2>
+            <div class="pub-tas">
+              <div v-for="(t, i) in data.assistants" :key="i" class="pub-ta">
+                <span class="ta-avatar">{{ (t.name || "助").charAt(0) }}</span>
+                <div class="ta-main">
+                  <div class="ta-head">
+                    <b>{{ t.name || "助教" }}</b>
+                    <span v-if="t.role" class="pub-tag">{{ t.role }}</span>
+                  </div>
+                  <div v-if="t.phone" class="pub-contact ta-contact">
+                    <fwb-icon name="phone" :size="14"></fwb-icon>
+                    <a :href="'tel:' + telOf(t.phone)">{{ t.phone }}</a>
+                  </div>
+                  <div v-if="t.email" class="pub-contact ta-contact">
+                    <fwb-icon name="send" :size="14"></fwb-icon>
+                    <a :href="'mailto:' + t.email">{{ t.email }}</a>
+                  </div>
+                  <div v-if="t.qq" class="pub-contact ta-contact">
+                    <fwb-icon name="chat" :size="14"></fwb-icon>
+                    <span>QQ {{ t.qq }}</span>
+                  </div>
+                  <div v-if="t.note" class="ta-note">{{ t.note }}</div>
+                </div>
+              </div>
+            </div>
+            <p class="ta-tip"><fwb-icon name="info" :size="14"></fwb-icon>实验与作业答疑请联系助教，紧急事务请联系任课教师。</p>
+          </section>
+
+          <section v-if="data.qqGroup || data.hasQr" class="pub-card">
+            <h2>课程交流群</h2>
+            <div v-if="data.qqGroup" class="pub-contact">
+              <fwb-icon name="chat" :size="15"></fwb-icon>
+              <span>QQ 群 <b class="pub-qq">{{ data.qqGroup }}</b></span>
+            </div>
+            <div v-if="data.hasQr" class="pub-qr" @click="zoom = true">
+              <img :src="qrUrl" alt="QQ 群二维码">
+            </div>
+            <p v-if="data.hasQr" class="pub-qr-tip">扫码或长按识别加入课程群<span v-if="data.qqGroup">（群号 {{ data.qqGroup }}）</span></p>
           </section>
 
           <section class="pub-card pub-open-note" :class="'st-' + data.visibility.state">
@@ -162,6 +231,13 @@
     <footer class="pub-foot">
       <span>NBUSAI 教师工作台 · 课程资源公开页</span>
     </footer>
+
+    <!-- 二维码放大查看（点击任意处关闭） -->
+    <div v-if="zoom" class="pub-zoom" @click="zoom = false">
+      <img :src="qrUrl" alt="QQ 群二维码">
+      <p>扫码加入课程群<span v-if="data.qqGroup"> · 群号 {{ data.qqGroup }}</span></p>
+      <small>点击任意位置关闭</small>
+    </div>
   </template>
 
   <div v-if="toast" class="pub-toast">{{ toast }}</div>

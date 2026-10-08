@@ -707,10 +707,323 @@
       "</div>"
   });
 
+  /* ------------------------------------------------------------------ */
+  /* 课程「助教 / 联系方式 / 教学日历」弹窗                                */
+  /* ------------------------------------------------------------------ */
+  var CONTACT_TYPES = ["讲授", "实验", "上机", "习题", "实践", "答疑", "考试", "其他"];
+
+  /* 助教身份预设：允许手填，预设只是为了少打字 */
+  var TA_ROLES = ["博士生助教", "硕士生助教", "本科生助教", "实验助教", "在线答疑助教"];
+
+  var TA_FIELDS = ["name", "role", "phone", "email", "qq", "note"];
+
+  function blankTa() {
+    return { name: "", role: "硕士生助教", phone: "", email: "", qq: "", note: "" };
+  }
+
+  var FwbCourseContact = defineComponent({
+    name: "FwbCourseContact",
+    components: { FwbIcon: FwbIcon },
+    props: { courseId: { type: String, default: "" } },
+    setup: function () {
+      var store = FWB.store;
+      return { S: store.state, act: store.act, api: FWB.api, U: FWB.util };
+    },
+    data: function () {
+      return {
+        TYPES: CONTACT_TYPES,
+        ROLES: TA_ROLES,
+        qqGroup: "",
+        rows: [],            // 教学日历经本地可编辑副本，保存时整体替换
+        tas: [],             // 助教名单同理
+        original: "",        // 打开时的快照，用于 dirty 判断
+        hasQr: false,
+        qrStamp: 0,
+        genStart: "",        // 「从大纲生成」的首课日期
+        confirmGen: false,   // 覆盖生成的两步确认（弹窗内不嵌全局 confirm）
+        confirmDel: false,   // 移除二维码的两步确认
+        busy: false,
+        ready: false,
+        uploading: false
+      };
+    },
+    computed: {
+      item: function () { return this.act.get("courses", this.courseId) || {}; },
+      qrSrc: function () {
+        if (!this.hasQr) return "";
+        return this.api.courses.qrUrl(this.courseId) + "?t=" + this.qrStamp;
+      },
+      totalHours: function () {
+        return this.rows.reduce(function (s, r) {
+          var n = parseInt(parseFloat(r.hours), 10);
+          return s + (isNaN(n) ? 0 : n);
+        }, 0);
+      },
+      dirty: function () {
+        return this.snapshot() !== this.original;
+      }
+    },
+    created: function () {
+      var self = this;
+      FWB.api.courses.contact(this.courseId).then(function (res) {
+        self.qqGroup = res.qqGroup || "";
+        self.rows = (res.calendar || []).map(function (r) { return Object.assign({}, r); });
+        self.tas = (res.assistants || []).map(function (t) {
+          return Object.assign(blankTa(), t, { role: t.role || "" });
+        });
+        self.hasQr = !!res.hasQr;
+        self.qrStamp = Date.now();
+        // 首课日期默认取现有首行日期，否则取本周一
+        self.genStart = (self.rows[0] && self.rows[0].date) || self.monday();
+        self.original = self.snapshot();
+        self.ready = true;
+      }, function () { self.ready = true; });
+    },
+    methods: {
+      snapshot: function () {
+        return JSON.stringify({
+          q: this.qqGroup.trim(), r: this.normalizeRows(), t: this.normalizeTas()
+        });
+      },
+      normalizeRows: function () {
+        return this.rows.map(function (r) {
+          return {
+            week: String(r.week || "").trim(), date: String(r.date || "").trim(),
+            topic: String(r.topic || "").trim(), hours: String(r.hours || "").trim(),
+            type: String(r.type || "").trim(), note: String(r.note || "").trim()
+          };
+        });
+      },
+      normalizeTas: function () {
+        return this.tas.map(function (t) {
+          var out = {};
+          TA_FIELDS.forEach(function (k) { out[k] = String(t[k] || "").trim(); });
+          return out;
+        });
+      },
+      /** 本周一（YYYY-MM-DD），作为「从大纲生成」的默认首课日期 */
+      monday: function () {
+        var now = new Date();
+        now.setHours(0, 0, 0, 0);
+        now.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+        return this.fmt(now);
+      },
+      fmt: function (d) {
+        var p = function (n) { return ("0" + n).slice(-2); };
+        return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+      },
+      parseDay: function (s) {
+        var m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(s || ""));
+        return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
+      },
+
+      /* ---------------- 二维码 ---------------- */
+      pickQr: function () { this.$refs.qrInput.click(); },
+      onQrPick: function (ev) {
+        var files = ev.target.files || [];
+        var file = files.length ? files[0] : null;
+        ev.target.value = "";   // 先取文件再清空：FileList 是活引用
+        if (!file) return;
+        var self = this;
+        this.uploading = true;
+        this.act.uploadCourseQr(this.courseId, file).then(function (res) {
+          self.hasQr = !!res.hasQr;
+          self.qrStamp = Date.now();
+          self.act.toast("群二维码已更新");
+        }, function (err) {
+          self.act.toast((err && err.message) || "上传失败", "error");
+        }).then(function () { self.uploading = false; });
+      },
+      removeQr: function () {
+        var self = this;
+        if (!this.confirmDel) {
+          this.armConfirm("confirmDel");
+          return;
+        }
+        this.confirmDel = false;
+        clearTimeout(this._t_confirmDel);
+        this.act.removeCourseQr(this.courseId).then(function () {
+          self.hasQr = false;
+          self.act.toast("已移除群二维码");
+        }, function (err) {
+          self.act.toast((err && err.message) || "移除失败", "error");
+        });
+      },
+
+      /* ---------------- 助教名单 ---------------- */
+      addTa: function () { this.tas.push(blankTa()); },
+      delTa: function (i) { this.tas.splice(i, 1); },
+
+      /* ---------------- 教学日历 ---------------- */
+      /** 两步确认：第一次点亮警示，几秒内再点一次才执行（避免弹窗嵌套） */
+      armConfirm: function (key) {
+        var self = this;
+        this[key] = !this[key];
+        clearTimeout(this["_t_" + key]);
+        if (!this[key]) return false;
+        this["_t_" + key] = setTimeout(function () { self[key] = false; }, 4000);
+        return false;
+      },
+      addRow: function () {
+        this.rows.push({ week: "第 " + (this.rows.length + 1) + " 周", date: "", topic: "", hours: "", type: "讲授", note: "" });
+      },
+      delRow: function (i) { this.rows.splice(i, 1); },
+      /** 按大纲逐章生成日历（覆盖现有行；有内容时两步确认） */
+      genFromSyllabus: function () {
+        var self = this;
+        var syllabus = (this.item.syllabus || []).filter(function (s) { return (s.chapter || "").trim(); });
+        if (!syllabus.length) { this.act.toast("课程还没有教学大纲，请先编辑大纲", "error"); return; }
+        if (this.rows.length && !this.confirmGen) {
+          this.armConfirm("confirmGen");
+          return;
+        }
+        this.confirmGen = false;
+        clearTimeout(this._t_confirmGen);
+        var start = this.parseDay(this.genStart) || this.parseDay(this.monday());
+        this.rows = syllabus.map(function (s, i) {
+          var day = new Date(start.getTime());
+          day.setDate(start.getDate() + i * 7);
+          return {
+            week: "第 " + (i + 1) + " 周",
+            date: self.fmt(day),
+            topic: String(s.chapter || "").trim(),
+            hours: String(s.hours || "").trim(),
+            type: String(s.type || "讲授").split(/[+＋]/)[0].trim() || "讲授",
+            note: ""
+          };
+        });
+        this.act.toast("已按大纲生成 " + this.rows.length + " 周日历");
+      },
+
+      close: function () { this.act.closeModal(); },
+      save: function () {
+        var self = this;
+        this.busy = true;
+        this.act.saveCourseContact(this.courseId, {
+          qqGroup: this.qqGroup.trim(),
+          calendar: this.normalizeRows(),
+          assistants: this.normalizeTas()
+        }).then(function (res) {
+          self.rows = (res.calendar || []).map(function (r) { return Object.assign({}, r); });
+          self.tas = (res.assistants || []).map(function (t) { return Object.assign({}, t); });
+          self.qqGroup = res.qqGroup || "";
+          self.original = self.snapshot();
+          self.act.closeModal();
+          self.act.toast("助教、联系方式与教学日历已保存");
+        }, function (err) {
+          self.act.toast((err && err.message) || "保存失败", "error");
+        }).then(function () { self.busy = false; });
+      }
+    },
+    template:
+      '<div class="ct-form">' +
+      /* ---------- 课程助教 ---------- */
+      '  <div class="ct-sec">' +
+      '    <div class="ct-sec-head">' +
+      "      <b>课程助教</b><span>姓名与联系方式展示在学生公开页，学生可直接拨打或发邮件</span>" +
+      '      <span class="ct-flex"></span>' +
+      '      <button class="btn ghost xs" type="button" @click="addTa"><fwb-icon name="plus"/>添加助教</button>' +
+      "    </div>" +
+      '    <div class="ct-tas">' +
+      '      <div v-for="(t, i) in tas" :key="i" class="ct-ta-item">' +
+      '        <div class="ct-ta-top"><b>助教 {{ i + 1 }}</b>' +
+      '          <span v-if="t.name" class="ct-ta-name">{{ t.name }}</span>' +
+      '          <span class="ct-flex"></span>' +
+      '          <button class="icon-btn ghost danger" type="button" title="删除该助教" @click="delTa(i)">' +
+      '            <fwb-icon name="trash"/></button>' +
+      "        </div>" +
+      '        <div class="ct-ta-grid">' +
+      '          <label class="ct-f"><span>姓名</span>' +
+      '            <input type="text" v-model.trim="t.name" maxlength="40" placeholder="如：李明"></label>' +
+      '          <label class="ct-f"><span>身份 / 分工</span>' +
+      '            <input type="text" v-model.trim="t.role" maxlength="80" list="ct-ta-roles" placeholder="如：硕士生助教"></label>' +
+      '          <label class="ct-f"><span>电话</span>' +
+      '            <input type="text" v-model.trim="t.phone" maxlength="80" placeholder="如：138 0000 2417"></label>' +
+      '          <label class="ct-f"><span>邮箱</span>' +
+      '            <input type="text" v-model.trim="t.email" maxlength="80" placeholder="如：ta@university.edu.cn"></label>' +
+      '          <label class="ct-f"><span>QQ</span>' +
+      '            <input type="text" v-model.trim="t.qq" maxlength="80" placeholder="如：402178536"></label>' +
+      '          <label class="ct-f"><span>值班与备注</span>' +
+      '            <input type="text" v-model.trim="t.note" maxlength="160" placeholder="如：周二 14:00-16:00 实验室答疑"></label>' +
+      "        </div>" +
+      "      </div>" +
+      '      <div v-if="!tas.length" class="empty" style="padding:16px 0">' +
+      '        <fwb-icon name="users" :size="30"/><p>尚未添加助教，点击右上角「添加助教」</p></div>' +
+      "    </div>" +
+      '    <datalist id="ct-ta-roles"><option v-for="r in ROLES" :key="r" :value="r"></option></datalist>' +
+      "  </div>" +
+
+      /* ---------- QQ 群 ---------- */
+      '  <div class="ct-sec">' +
+      '    <div class="ct-sec-head"><b>课程 QQ 群</b><span>群号与二维码展示在学生公开页</span></div>' +
+      '    <div class="ct-qq-row">' +
+      '      <div class="field">' +
+      '        <label>QQ 群号</label>' +
+      '        <input type="text" v-model="qqGroup" maxlength="64" placeholder="例如：736285914">' +
+      "      </div>" +
+      '      <div class="field">' +
+      "        <label>群二维码</label>" +
+      '        <div class="ct-qr">' +
+      '          <img v-if="qrSrc" :src="qrSrc" alt="群二维码">' +
+      '          <span v-else class="ct-qr-empty"><fwb-icon name="qrcode" :size="24"/></span>' +
+      '          <span class="ct-qr-ops">' +
+      '            <button class="btn ghost xs" type="button" :disabled="uploading" @click="pickQr">' +
+      '              <fwb-icon name="upload"/>{{ uploading ? "上传中…" : (hasQr ? "更换" : "上传") }}</button>' +
+      '            <button v-if="hasQr" class="btn ghost xs danger" type="button" @click="removeQr">' +
+      '              <fwb-icon :name="confirmDel ? \'alert\' : \'trash\'"/>{{ confirmDel ? "再点一次移除" : "移除" }}</button>' +
+      "          </span>" +
+      "        </div>" +
+      '        <input ref="qrInput" type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden @change="onQrPick">' +
+      "      </div>" +
+      "    </div>" +
+      "  </div>" +
+
+      /* ---------- 教学日历 ---------- */
+      '  <div class="ct-sec">' +
+      '    <div class="ct-sec-head">' +
+      "      <b>教学日历</b>" +
+      '      <span>{{ rows.length }} 周 · {{ totalHours }} 学时</span>' +
+      '      <span class="ct-flex"></span>' +
+      '      <label class="ct-gen">首课日期 <input type="date" v-model="genStart"></label>' +
+      '      <button class="btn ghost xs" type="button" :class="{ danger: confirmGen }" ' +
+      '              :title="confirmGen ? \'再次点击将覆盖现有日历\' : \'\'" @click="genFromSyllabus">' +
+      '        <fwb-icon :name="confirmGen ? \'alert\' : \'sparkle\'"/>{{ confirmGen ? "再点一次覆盖" : "从大纲生成" }}</button>' +
+      '      <button class="btn ghost xs" type="button" @click="addRow"><fwb-icon name="plus"/>加一周</button>' +
+      "    </div>" +
+      '    <div class="ct-cal">' +
+      '      <div class="ct-cal-row ct-cal-head">' +
+      "        <span>周次</span><span>日期</span><span>教学内容</span><span>学时</span><span>形式</span><span>备注</span><span></span>" +
+      "      </div>" +
+      '      <div v-for="(r, i) in rows" :key="i" class="ct-cal-row">' +
+      '        <input type="text" v-model.trim="r.week" placeholder="第 1 周">' +
+      '        <input type="date" v-model="r.date">' +
+      '        <input type="text" v-model.trim="r.topic" placeholder="教学内容" class="ct-wide">' +
+      '        <input type="text" v-model.trim="r.hours" placeholder="4">' +
+      '        <select v-model="r.type" aria-label="形式">' +
+      '          <option v-for="t in TYPES" :key="t" :value="t">{{ t }}</option>' +
+      "        </select>" +
+      '        <input type="text" v-model.trim="r.note" placeholder="备注">' +
+      '        <button class="icon-btn ghost danger" type="button" title="删除本行" @click="delRow(i)">' +
+      '          <fwb-icon name="trash"/></button>' +
+      "      </div>" +
+      '      <div v-if="!rows.length" class="empty" style="padding:18px 0"><p>暂无教学日历，可从大纲一键生成</p></div>' +
+      "    </div>" +
+      "  </div>" +
+
+      '  <div class="lk-tip"><fwb-icon name="info"/>保存后学生公开页同步更新；助教或日历中每一项都为空的行会自动丢弃，周次留空时按顺序自动补齐。</div>' +
+      '  <div class="modal-actions">' +
+      '    <button class="btn ghost" type="button" @click="close">取消</button>' +
+      '    <button class="btn primary" type="button" :disabled="busy || !ready" @click="save">' +
+      '      {{ busy ? "保存中…" : (dirty ? "保存" : "已是最新") }}</button>' +
+      "  </div>" +
+      "</div>"
+  });
+
   FWB.components = {
     FwbIcon: FwbIcon, FwbProgress: FwbProgress, FwbStars: FwbStars,
     FwbModal: FwbModal, FwbToasts: FwbToasts, FwbField: FwbField, FwbForm: FwbForm,
     FwbThemePicker: FwbThemePicker, FwbReviewDetail: FwbReviewDetail,
-    FwbCourseShare: FwbCourseShare, FwbLinkEdit: FwbLinkEdit
+    FwbCourseShare: FwbCourseShare, FwbLinkEdit: FwbLinkEdit,
+    FwbCourseContact: FwbCourseContact
   };
 })(window);

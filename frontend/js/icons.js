@@ -62,7 +62,11 @@
     rotate: '<path d="M3 12a9 9 0 0 1 15.5-6.4L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.4L3 16"/><path d="M3 21v-5h5"/>',
     filter: '<path d="M3 5h18l-7 8.2V19l-4 2v-7.8z"/>',
     undo: '<path d="M3 8v6h6"/><path d="M3.6 14a8.5 8.5 0 1 0 2.4-7.7L3 9"/>',
-    seal: '<path d="M12 3l2.2 1.6 2.7-.3 1 2.5 2.3 1.4-.8 2.6.8 2.6-2.3 1.4-1 2.5-2.7-.3L12 19l-2.2-1.6-2.7.3-1-2.5L3.8 13.8l.8-2.6-.8-2.6 2.3-1.4 1-2.5 2.7.3z"/><path d="m9.3 11.6 2 2 3.4-3.8"/>'
+    seal: '<path d="M12 3l2.2 1.6 2.7-.3 1 2.5 2.3 1.4-.8 2.6.8 2.6-2.3 1.4-1 2.5-2.7-.3L12 19l-2.2-1.6-2.7.3-1-2.5L3.8 13.8l.8-2.6-.8-2.6 2.3-1.4 1-2.5 2.7.3z"/><path d="m9.3 11.6 2 2 3.4-3.8"/>',
+    link: '<path d="M10.5 13.5a3.5 3.5 0 0 0 5 0l3.5-3.5a3.54 3.54 0 0 0-5-5l-1.6 1.6"/><path d="M13.5 10.5a3.5 3.5 0 0 0-5 0L5 14a3.54 3.54 0 0 0 5 5l1.6-1.6"/>',
+    phone: '<path d="M21 16.9v2.6a2 2 0 0 1-2.2 2 19.6 19.6 0 0 1-8.5-3 19.3 19.3 0 0 1-6-6 19.6 19.6 0 0 1-3-8.6A2 2 0 0 1 3.3 2h2.6a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L7.1 9.7a16 16 0 0 0 6 6l1.1-1.1a2 2 0 0 1 2.1-.5c.9.4 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/>',
+    chat: '<path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.6 9.6 0 0 1-3.8-.8L3 21l1.9-5.2A8.4 8.4 0 0 1 12 3.1a8.4 8.4 0 0 1 9 8.4z"/><path d="M9 11.5h.01M12.5 11.5h.01M16 11.5h.01"/>',
+    qrcode: '<rect x="3" y="3" width="7" height="7" rx="1.4"/><rect x="14" y="3" width="7" height="7" rx="1.4"/><rect x="3" y="14" width="7" height="7" rx="1.4"/><path d="M14 14h3v3h-3z"/><path d="M20 14v1M20 18v3h-3M14 20v1"/>'
   };
 
   // 导航 / 实体 -> 图标
@@ -70,6 +74,7 @@
     dashboard: "dashboard", projects: "flask", literature: "book", exchanges: "globe",
     achievements: "medal", teachings: "clipboard", courses: "cap", students: "users",
     schedule: "calendar", developments: "trending", tools: "wrench",
+    links: "link", cv: "user",
     teaching_calendar: "calendar", grade_calc: "chart", cite_convert: "book",
     budget_calc: "briefcase", submission_track: "send", student_board: "users",
     duty_log: "clock", meeting_note: "notebook", pdf_toolkit: "file",

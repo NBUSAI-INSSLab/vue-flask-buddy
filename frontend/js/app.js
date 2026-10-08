@@ -38,6 +38,8 @@
       label: "发展区",
       items: [
         { key: "developments", text: "个人发展", icon: "trending" },
+        { key: "cv", text: "个人简历", icon: "user" },
+        { key: "links", text: "常用网站", icon: "link" },
         { key: "tools", text: "常用工具", icon: "wrench" }
       ]
     }
@@ -393,33 +395,6 @@ var EMPTY_DETAIL = {
       quickMenu: {
         get: function () { return this.UI.quickMenu; },
         set: function (v) { this.UI.quickMenu = v; }
-      },
-
-      /* 侧边栏倒计时：最近的未逾期项目截止，否则最近的日程 */
-      countdown: function () {
-        var cands = (this.S.data.projects || []).map(function (p) {
-          return { title: p.name, date: p.deadline, label: "项目截止" };
-        }).filter(function (x) {
-          return x.date && U.daysUntil(x.date) >= 0;
-        });
-
-        if (!cands.length) {
-          cands = (this.S.data.events || []).map(function (e) {
-            return { title: e.title, date: e.date, label: e.type };
-          }).filter(function (x) {
-            return x.date && U.daysUntil(x.date) >= 0;
-          });
-        }
-        if (!cands.length) return null;
-
-        cands.sort(function (a, b) { return String(a.date).localeCompare(String(b.date)); });
-        var it = cands[0];
-        var n = U.daysUntil(it.date);
-        return {
-          title: it.title,
-          days: n,
-          pct: Math.max(6, 100 - Math.min(100, (n / 90) * 100))
-        };
       }
     },
 

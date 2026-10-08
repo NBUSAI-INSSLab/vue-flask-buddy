@@ -88,6 +88,10 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
     await setVis("c2", { published: true, openFrom: win.from, openUntil: win.until });
     await setVis("c3", { published: false, openFrom: "", openUntil: "" });
   }, { from: dayShift(-40), until: dayShift(90) });
+  /* 自愈走的是裸 fetch，前端 store 仍是登录时拉到的旧状态；
+     刷新一次再校验徽标，避免上一次运行遗留状态导致本用例失真 */
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForSelector(".sidebar .nav-item", { timeout: 15000 });
 
   await page.locator(".sidebar .nav-item", { hasText: "课程资源" }).click();
   await page.waitForSelector(".course-grid .course-card", { timeout: 15000 });
@@ -118,6 +122,122 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
   check((await page.locator(".ss-link .btn", { hasText: "预览" }).count()) === 1, "提供预览按钮");
   check((await page.locator(".ss-hint").innerText()).indexOf("长期开放") >= 0,
         "开放说明文案", (await page.locator(".ss-hint").innerText()).trim());
+
+  /* ===================================================================== */
+  console.log("\n== 1.5 教学日历与联系方式 ==");
+
+  check((await page.locator(".detail-head .btn", { hasText: "助教与联系" }).count()) === 1,
+        "详情页提供「助教与联系」入口");
+  await page.locator(".tabs .tab", { hasText: "教学日历" }).click();
+  await page.waitForSelector(".cal-toolbar", { timeout: 8000 });
+  check((await page.locator(".tbl tbody tr").count()) === 14, "教学日历 14 周",
+        String(await page.locator(".tbl tbody tr").count()));
+  const calFoot = (await page.locator(".tbl tfoot").innerText()).replace(/\s/g, "");
+  check(calFoot.includes("14周") && calFoot.includes("56学时"), "日历合计学时", calFoot);
+  await shot("36-course-calendar");
+
+  await page.locator(".cal-toolbar .btn", { hasText: "编辑日历与联系方式" }).click();
+  await page.waitForSelector(".modal-mask.show .ct-form", { timeout: 8000 });
+  await page.waitForTimeout(600);
+  check((await page.locator(".modal-mask.show .modal-head h2").innerText()).trim() === "助教与联系方式",
+        "打开「助教与联系方式」弹窗");
+  check((await page.locator(".modal-mask.show input[maxlength='64']").inputValue()) === "736285914",
+        "QQ 群号已回填");
+  check((await page.locator(".modal-mask.show .ct-qr img").count()) === 1, "群二维码预览已加载");
+  check((await page.locator(".modal-mask.show .ct-cal-row:not(.ct-cal-head)").count()) === 14,
+        "日历编辑器回填 14 行");
+  const saveLabel = (await page.locator(".modal-mask.show .modal-actions .btn.primary").innerText()).trim();
+  check(saveLabel === "已是最新", "未修改时保存按钮显示已是最新", saveLabel);
+
+  /* 从大纲生成（两步确认，点亮后立即再点一次）→ 8 章覆盖 14 行；随后取消不保存 */
+  const genBtn = page.locator(".modal-mask.show .ct-sec-head .btn", { hasText: "从大纲生成" });
+  await genBtn.click();
+  await page.waitForTimeout(250);
+  check((await page.locator(".modal-mask.show .btn", { hasText: "再点一次覆盖" }).count()) === 1,
+        "覆盖生成走两步确认");
+  await page.locator(".modal-mask.show .ct-sec-head .btn.danger").click();   // 确认态按钮已变 danger
+  await page.waitForTimeout(500);
+  check((await page.locator(".modal-mask.show .ct-cal-row:not(.ct-cal-head)").count()) === 8,
+        "按大纲生成 8 行日历");
+  const genFirst = await page.locator(".modal-mask.show .ct-cal-row:not(.ct-cal-head) input.ct-wide")
+    .first().inputValue();
+  check(genFirst.indexOf("第 1 章") === 0, "生成内容取自大纲章节", genFirst);
+  await shot("37-course-contact-modal");
+  await page.locator(".modal-mask.show .modal-actions .btn", { hasText: "取消" }).click();
+  await page.waitForTimeout(300);
+  check((await page.locator(".ct-form").count()) === 0, "取消后弹窗关闭且不保存");
+
+  /* ===================================================================== */
+  console.log("\n== 1.6 课程助教（姓名 + 联系方式，可编辑）==");
+
+  await page.locator(".tabs .tab", { hasText: "课程助教" }).click();
+  await page.waitForSelector(".ta-link", { timeout: 8000 });
+  check((await page.locator(".tbl tbody tr").count()) === 2, "课程助教 2 位",
+        String(await page.locator(".tbl tbody tr").count()));
+  const taRow0 = (await page.locator(".tbl tbody tr").first().innerText()).replace(/\s+/g, " ");
+  check(taRow0.indexOf("李明") >= 0 && taRow0.indexOf("博士生助教") >= 0, "助教姓名与身份/分工", taRow0);
+  check((await page.locator(".tbl tbody tr a[href^='tel:']").count()) === 2, "助教电话可一键拨打");
+  check((await page.locator(".tbl tbody tr a[href^='mailto:']").count()) === 2, "助教邮箱可一键发信");
+  await shot("42-course-ta");
+
+  /* 打开编辑弹窗：回填 + 未修改时的按钮文案 */
+  await page.locator(".cal-toolbar .btn", { hasText: "编辑助教信息" }).click();
+  await page.waitForSelector(".modal-mask.show .ct-form", { timeout: 8000 });
+  await page.waitForTimeout(400);
+  check((await page.locator(".modal-mask.show .modal-head h2").innerText()).trim() === "助教与联系方式",
+        "助教标签页可打开编辑弹窗");
+  check((await page.locator(".modal-mask.show .ct-ta-item").count()) === 2, "助教编辑器回填 2 条");
+  const taName0 = await page.locator(".modal-mask.show .ct-ta-item").first()
+    .locator(".ct-f input").first().inputValue();
+  check(taName0 === "李明", "助教姓名回填", taName0);
+  check((await page.locator(".modal-mask.show .modal-actions .btn.primary").innerText()).trim() === "已是最新",
+        "未修改助教时保存按钮显示已是最新");
+
+  /* 新增一位助教（填满六项）并保存 */
+  await page.locator(".modal-mask.show .ct-sec-head .btn", { hasText: "添加助教" }).click();
+  await page.waitForTimeout(200);
+  check((await page.locator(".modal-mask.show .ct-ta-item").count()) === 3, "添加助教后编辑器 3 条");
+  const taFields = page.locator(".modal-mask.show .ct-ta-item").last().locator(".ct-f input");
+  await taFields.nth(0).fill("e2e助教");
+  await taFields.nth(1).fill("实验助教");
+  await taFields.nth(2).fill("137 0000 9999");
+  await taFields.nth(3).fill("e2e-ta@university.edu.cn");
+  await taFields.nth(4).fill("999888777");
+  await taFields.nth(5).fill("自动化验收创建");
+  await shot("43-course-ta-edit");
+  await page.locator(".modal-mask.show .modal-actions .btn.primary").click();
+  await page.waitForSelector(".ct-form", { state: "detached", timeout: 8000 });
+  await page.waitForTimeout(700);
+  check((await page.locator(".tbl tbody tr").count()) === 3, "保存后详情页助教 3 位");
+  check((await page.locator(".tbl tbody tr", { hasText: "e2e助教" }).count()) === 1, "新助教显示在详情页");
+
+  /* 学生公开页同步（电话 / 邮箱链接、首页信息条计数） */
+  {
+    const token = courseLink.split("/c/")[1];
+    const { p2 } = await openStudentPage(token);
+    await p2.waitForSelector(".pub-tas", { timeout: 10000 });
+    check((await p2.locator(".pub-ta").count()) === 3, "学生页同步展示 3 位助教");
+    check((await p2.locator(".pub-ta", { hasText: "e2e助教" }).count()) === 1, "学生页出现新增助教");
+    const telHref = await p2.locator(".pub-ta", { hasText: "e2e助教" })
+      .locator("a[href^='tel:']").getAttribute("href");
+    check(telHref === "tel:13700009999", "学生页电话链接去掉空格", telHref);
+    check((await p2.locator(".pub-hero-chips").innerText()).indexOf("3 位助教") >= 0,
+          "首页信息条显示助教人数");
+    await p2.screenshot({ path: path.join(SHOT_DIR, "44-student-page-ta.png"), fullPage: true });
+    await p2.close();
+  }
+
+  /* 删除刚新增的助教，还原演示数据 */
+  await page.locator(".cal-toolbar .btn", { hasText: "编辑助教信息" }).click();
+  await page.waitForSelector(".modal-mask.show .ct-form", { timeout: 8000 });
+  await page.waitForTimeout(400);
+  await page.locator(".modal-mask.show .ct-ta-item").last().locator(".ct-ta-top .icon-btn").click();
+  await page.waitForTimeout(200);
+  check((await page.locator(".modal-mask.show .ct-ta-item").count()) === 2, "删除助教后编辑器 2 条");
+  await page.locator(".modal-mask.show .modal-actions .btn.primary").click();
+  await page.waitForSelector(".ct-form", { state: "detached", timeout: 8000 });
+  await page.waitForTimeout(500);
+  check((await page.locator(".tbl tbody tr").count()) === 2, "还原：助教回到 2 位");
 
   /* ===================================================================== */
   console.log("\n== 2. 课程资料上传 / 下载 / 删除 ==");
@@ -258,8 +378,35 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
     await p2.waitForSelector(".pub-hero", { timeout: 10000 });
     check((await p2.locator(".pub-hero h1").innerText()).trim() === "计算机网络", "学生页课程名正确");
     check((await p2.locator(".pub-hero-meta").innerText()).indexOf("江先亮") >= 0, "学生页展示任课教师");
-    check((await p2.locator(".pub-table tbody tr").count()) === 8, "教学大纲 8 章");
+    check((await p2.locator(".pub-table:not(.cal-table) tbody tr").count()) === 8, "教学大纲 8 章");
     check((await p2.locator(".pub-file").count()) === 2, "学生页只列出可下载的 2 份资料");
+    /* 教学日历与联系方式 */
+    check((await p2.locator(".cal-table tbody tr").count()) === 14, "教学日历 14 周",
+          String(await p2.locator(".cal-table tbody tr").count()));
+    check((await p2.locator(".pub-h2-note", { hasText: "56 学时" }).count()) >= 1, "日历标题带学时合计");
+    check((await p2.locator(".cal-flag", { hasText: "本周" }).count()) === 1, "高亮当前周");
+    check((await p2.locator(".pub-qq").innerText()).indexOf("736285914") >= 0, "展示 QQ 群号");
+    check((await p2.locator(".pub-qr img").count()) === 1, "展示群二维码");
+    const qrResp = await ctx.request.get(BASE + "/api/public/courses/" + token + "/qr");
+    check(qrResp.status() === 200 && (await qrResp.body()).length > 0, "群二维码公开接口可访问");
+    /* 教师手机号（来自工作台资料）——助教卡也复用 .pub-contact，故按卡片精确定位 */
+    check((await p2.locator(".pub-card:has(.pub-teacher) a[href^='tel:']").count()) === 1,
+          "手机号可一键拨打");
+    /* 课程助教：姓名 + 联系方式 */
+    check((await p2.locator(".pub-ta").count()) === 2, "学生页展示 2 位助教");
+    check((await p2.locator(".pub-ta", { hasText: "李明" }).count()) === 1, "学生页助教姓名");
+    check((await p2.locator(".pub-ta .ta-head .pub-tag").count()) === 2, "学生页助教身份徽标");
+    check((await p2.locator(".pub-ta a[href^='tel:']").count()) === 2, "学生页助教电话可拨打");
+    check((await p2.locator(".pub-ta a[href^='mailto:']").count()) === 2, "学生页助教邮箱可发信");
+    check((await p2.locator(".pub-ta .ta-note").count()) === 2, "学生页展示助教值班备注");
+    check((await p2.locator(".ta-tip").count()) === 1, "学生页提示联系助教的场景");
+    /* 二维码放大查看 */
+    await p2.locator(".pub-qr").click();
+    await p2.waitForTimeout(300);
+    check((await p2.locator(".pub-zoom").count()) === 1, "二维码可放大查看");
+    await p2.locator(".pub-zoom").click();
+    await p2.waitForTimeout(200);
+    check((await p2.locator(".pub-zoom").count()) === 0, "点击任意处关闭放大");
     check((await p2.locator(".pub-open-row b").innerText()).indexOf("已开放") >= 0, "侧栏开放状态卡");
     check((await p2.locator(".pub-teacher b").innerText()).indexOf("江先亮") >= 0, "侧栏教师信息");
 

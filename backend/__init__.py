@@ -55,6 +55,15 @@ def create_app(config_overrides: dict | None = None) -> Flask:
         """学生公开课程页：免登录，页面自取 /api/public/courses/<token>。"""
         return send_from_directory(config.FRONTEND_DIR, "course.html")
 
+    @app.route("/cv/<token>")
+    def public_cv(token):  # noqa: ARG001 — 令牌由前端脚本从 URL 解析
+        """访客简历页：免登录，页面自取 /api/public/cv/<token>。
+
+        令牌非法或简历未公开时不在这里拦截 —— 由前端渲染统一的提示页，
+        这样访问者看到的是排版好的说明，而不是一个 JSON 错误。
+        """
+        return send_from_directory(config.FRONTEND_DIR, "cv.html")
+
     @app.route("/favicon.ico")
     def favicon():
         return ("", 204)
@@ -93,6 +102,7 @@ def _bootstrap_accounts(app) -> None:
             _ensure_audit_fields()
             _ensure_course_fields()
             _ensure_link_seed()
+            _ensure_cv_fields()
             return
 
         from . import seed_teachers
@@ -145,6 +155,24 @@ def _ensure_link_seed() -> int:
         import logging
         logging.getLogger("fwb").info("已为存量工作台补入 %d 个常用网站", added)
     return added
+
+
+def _ensure_cv_fields() -> int:
+    """为存量工作台补齐个人简历字段（令牌 / 区块开关 / 教育经历与社会服务）。
+
+    简历令牌缺失会让教师拿不到固定链接，因此这里必须回填；
+    补种只在每个租户库首次执行一次，教师主动清空的内容不会复活。
+    """
+    from . import cv
+
+    try:
+        fixed = cv.ensure_all()
+    except Exception:  # noqa: BLE001 - 回填失败不应阻断启动
+        return 0
+    if fixed:
+        import logging
+        logging.getLogger("fwb").info("已为 %d 个工作台补齐个人简历字段", fixed)
+    return fixed
 
 
 def _ensure_tenant_spaces() -> None:

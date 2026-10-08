@@ -97,7 +97,41 @@
       /** 直链（同源携带会话 Cookie），用于 <a href> 下载 */
       materialUrl: function (id, mid) {
         return BASE + "/api/courses/" + id + "/materials/" + mid + "/download";
-      }
+      },
+      /** 课程联系方式概况：QQ 群 / 二维码 / 教学日历 */
+      contact: function (id) { return request("GET", "/api/courses/" + id + "/contact"); },
+      saveContact: function (id, payload) {
+        return request("POST", "/api/courses/" + id + "/contact", payload);
+      },
+      uploadQr: function (id, file) {
+        var fd = new FormData();
+        fd.append("file", file);
+        return request("POST", "/api/courses/" + id + "/qr", fd, true);
+      },
+      removeQr: function (id) { return request("DELETE", "/api/courses/" + id + "/qr"); },
+      /** 群二维码直链（时间戳防缓存由调用方拼接） */
+      qrUrl: function (id) { return BASE + "/api/courses/" + id + "/qr"; }
+    },
+
+    /** 个人简历（教师端；公开侧走 /api/public/cv/<token>） */
+    cv: {
+      /** 发布概况：固定链接 / 公开开关 / 区块开关与条目数 */
+      overview: function () { return request("GET", "/api/cv"); },
+      setVisibility: function (published) {
+        return request("POST", "/api/cv/visibility", { published: !!published });
+      },
+      /** 区块显示开关：只传需要变更的键 */
+      setSections: function (patch) { return request("POST", "/api/cv/sections", patch || {}); },
+      /** 更换固定链接（旧链接立即失效） */
+      rotateToken: function () { return request("POST", "/api/cv/token", {}); },
+      /** 聚合后的简历数据（与公开页同源，供工作台内预览） */
+      preview: function () { return request("GET", "/api/cv/preview"); },
+      uploadAvatar: function (file) {
+        var fd = new FormData();
+        fd.append("file", file);
+        return request("POST", "/api/cv/avatar", fd, true);
+      },
+      removeAvatar: function () { return request("DELETE", "/api/cv/avatar"); }
     },
 
     /** 常用网站图标（服务端抓取 + 缓存；抓不到时返回首字母头像，不会 404） */

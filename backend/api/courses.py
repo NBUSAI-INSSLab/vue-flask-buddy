@@ -3,6 +3,7 @@
 - 开放设置：``published`` 开关 + ``openFrom`` / ``openUntil`` 时间窗口
 - 学生链接：课程 ``shareToken`` 驱动的 ``/c/<token>`` 公开页
 - 资料文件：上传 / 下载 / 删除，磁盘落于 ``data/course_files/<uid>/<cid>/``
+- 教学日历与联系方式：``calendar`` / ``assistants`` / ``qqGroup`` / 群二维码上传
 """
 from __future__ import annotations
 
@@ -192,3 +193,96 @@ def _download_name(material: dict, path) -> str:
     """以资料原始文件名为准，缺失时回落到磁盘文件名。"""
     name = (material.get("name") or "").strip() or path.name
     return name.replace("/", "_").replace("\\", "_")
+
+
+# --------------------------------------------------------------------------- #
+# 教学日历与联系方式
+# --------------------------------------------------------------------------- #
+def _contact_payload(course: dict) -> dict:
+    """课程联系方式概况：QQ 群、二维码、教学日历与助教名单。"""
+    calendar = courses_util.clean_calendar(course.get("calendar"))
+    return {
+        "courseId": course.get("id") or "",
+        "qqGroup": str(course.get("qqGroup") or ""),
+        "hasQr": courses_util.has_qr(course),
+        "qrUrl": f"/api/courses/{course.get('id')}/qr",
+        "assistants": courses_util.clean_assistants(course.get("assistants")),
+        "calendar": calendar,
+        "calendarHours": sum(
+            int(float(r["hours"] or 0)) if str(r.get("hours") or "").replace(".", "", 1).isdigit() else 0
+            for r in calendar
+        ),
+    }
+
+
+@bp.get("/courses/<course_id>/contact")
+def get_contact(course_id: str):
+    store = open_store()
+    course, err = _course_or_404(store, course_id)
+    if err:
+        return err
+    return _ok(_contact_payload(course))
+
+
+@bp.post("/courses/<course_id>/contact")
+def set_contact(course_id: str):
+    """保存 QQ 群号、助教名单与教学日历；内容在服务端清洗，公开页所见即所存。"""
+    store = open_store()
+    course, err = _course_or_404(store, course_id)
+    if err:
+        return err
+
+    body = request.get_json(silent=True) or {}
+    if not isinstance(body, dict):
+        return _err("请求体必须是 JSON 对象")
+    patch = courses_util.sanitize_contact(body)
+    if not patch:
+        return _err("没有需要保存的内容")
+
+    updated = store.update("courses", course_id, patch) or course
+    return _ok(_contact_payload(updated))
+
+
+@bp.get("/courses/<course_id>/qr")
+def qr_image(course_id: str):
+    """教师端读取群二维码（同源携带会话，客户端可用时间戳防缓存）。"""
+    store = open_store()
+    course, err = _course_or_404(store, course_id)
+    if err:
+        return err
+    path = courses_util.qr_path(g.user_id, course_id, course)
+    if path is None:
+        return _err("尚未上传群二维码", 404)
+    return send_file(path, max_age=0)
+
+
+@bp.post("/courses/<course_id>/qr")
+def upload_qr(course_id: str):
+    """上传 / 更换群二维码（按内容嗅探类型，不信任客户端扩展名）。"""
+    store = open_store()
+    course, err = _course_or_404(store, course_id)
+    if err:
+        return err
+
+    fs = request.files.get("file")
+    if fs is None or not (fs.filename or "").strip():
+        return _err("没有收到文件")
+    try:
+        saved = courses_util.save_qr(g.user_id, course_id, fs)
+    except ValueError as e:
+        return _err(str(e))
+
+    updated = store.update("courses", course_id, {"qqQr": saved["qqQr"]}) or course
+    return _ok(_contact_payload(updated))
+
+
+@bp.delete("/courses/<course_id>/qr")
+def remove_qr(course_id: str):
+    """移除群二维码：磁盘文件与文档字段同步清理。"""
+    store = open_store()
+    course, err = _course_or_404(store, course_id)
+    if err:
+        return err
+    courses_util.drop_qr(g.user_id, course_id, course)
+    updated = store.update("courses", course_id, {"qqQr": ""}) or course
+    return _ok(_contact_payload(updated))

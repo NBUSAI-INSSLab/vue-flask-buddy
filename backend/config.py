@@ -55,6 +55,8 @@ COLLECTIONS = [
     "teachings",    # 教学管理
     "achievements", # 成果管理
     "developments", # 个人发展
+    "educations",   # 教育经历（个人简历）
+    "services",     # 社会服务（个人简历：兼职 / 审稿 / 评审 / 学会任职）
     "tools",        # 常用工具
     "tool_runs",    # 工具执行留痕（设备台账等）
     "links",        # 常用网站（首页底部快捷入口，图标自动抓取）
