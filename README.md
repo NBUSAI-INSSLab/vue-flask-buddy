@@ -254,7 +254,7 @@ python run.py
 | 角色 | 账号 | 密码 | 说明 |
 | --- | --- | --- | --- |
 | 管理员 | `admin` | `admin123` | 进入管理中心，查看全院统计并管理教师 |
-| 教师 | `jiangxl` | `123456` | 完整演示数据的工作台（江先亮） |
+| 教师 | `jiangxl` | `123456` | 完整演示数据的工作台（江老师） |
 | 教师 | `zhangwei` / `limin` / `wangqiang` / `chenjing` | `123456` | 其余 4 位演示教师（数据规模各不相同，便于横向对比） |
 
 首次启动自动建库：创建 `data/users.db`（账号表）、`data/secret.key`（会话密钥）与 `data/tenants/`（每位教师一个独立库，含 5 位演示教师 + 管理员）。旧版本的单库 `data/workbench.db` 会自动迁移为 `data/tenants/u_jiangxl.db`。

@@ -137,7 +137,7 @@
           { name: "status", label: "状态", type: "select", opts: ["待确认", "已确认", "进行中", "已完成", "已取消"], value: "待确认" },
           { name: "funding", label: "经费 / 费用", ph: "如 会议注册费 1800 元（项目 p1 支出）" },
           { name: "travel", label: "行程安排", ph: "如 10/15 高铁 虹桥，10/17 返程" },
-          { name: "participants", label: "参与人（逗号分隔）", ph: "如 江先亮,王雪" },
+          { name: "participants", label: "参与人（逗号分隔）", ph: "如 江老师,王雪" },
           { name: "topic", label: "交流内容", type: "textarea", rows: 3, ph: "报告主题 / 稿件内容 / 评审要点…" },
           { name: "note", label: "备注", type: "textarea", rows: 3, ph: "需提前准备的材料、注意事项…" }
         ],
@@ -194,7 +194,7 @@
           { name: "title", label: "成果名称", req: true, ph: "论文 / 专利 / 软著 / 奖励名称" },
           { name: "type", label: "成果类型", type: "select", opts: ACH_TYPES, value: "期刊论文" },
           { name: "level", label: "级别", ph: "如 SCI 二区 / 发明专利 / 省部级二等奖" },
-          { name: "authors", label: "作者", ph: "如 江先亮, 张伟, 李明" },
+          { name: "authors", label: "作者", ph: "如 江老师, 张伟, 李明" },
           { name: "role", label: "本人角色", ph: "如 第一作者 / 通讯作者 / 第一发明人" },
           { name: "venue", label: "发表 / 授权单位", ph: "如 IEEE Sensors Journal" },
           { name: "date", label: "日期", type: "date", value: U.today() },

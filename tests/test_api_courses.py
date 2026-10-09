@@ -170,7 +170,7 @@ def test_public_course_visible_without_login(anon_client, client):
     assert resp.status_code == 200
     data = resp.get_json()["data"]
     assert data["name"] == "计算机网络"
-    assert data["teacher"]["name"] == "江先亮"
+    assert data["teacher"]["name"] == "江老师"
     assert len(data["syllabus"]) == 8
     # 未上传文件的种子资料不下发
     assert data["materials"] == []
@@ -297,7 +297,7 @@ def test_upload_material_persists_file(client, store):
     assert mat["bytes"] == len(payload)
     assert mat["size"] == courses_util.human_size(len(payload))
     assert mat["stored"].startswith(f"{TEACHER_ID}/{C1}/")
-    assert mat["uploadedBy"] == "江先亮"
+    assert mat["uploadedBy"] == "江老师"
     assert (courses_util.COURSE_FILES_DIR / mat["stored"]).read_bytes() == payload
 
 

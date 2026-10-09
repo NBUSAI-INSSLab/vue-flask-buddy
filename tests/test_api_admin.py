@@ -6,7 +6,7 @@ import pytest
 from backend import config
 
 ADMIN_CREDS = {"username": "admin", "password": "admin123"}
-SEED_TEACHER_NAMES = {"江先亮", "张伟", "李敏", "王强", "陈静"}
+SEED_TEACHER_NAMES = {"江老师", "张伟", "李敏", "王强", "陈静"}
 
 
 def _data(resp):
@@ -40,7 +40,7 @@ def test_overview_shape(admin_client):
 
 def test_overview_totals_match_seed(admin_client):
     totals = _data(admin_client.get("/api/admin/overview"))["totals"]
-    # 江先亮(4) + 张伟(3) + 李敏(2) + 王强(1) + 陈静(3)
+    # 江老师(4) + 张伟(3) + 李敏(2) + 王强(1) + 陈静(3)
     assert totals["projects"] == 13
     assert totals["students"] == 14
     assert totals["papers"] == 20
@@ -66,10 +66,10 @@ def test_teacher_list_sorted_stably(admin_client):
 # 教师详情统计
 # --------------------------------------------------------------------------- #
 def test_teacher_detail_sections(admin_client):
-    tid = _teacher_id(admin_client, "江先亮")
+    tid = _teacher_id(admin_client, "江老师")
     data = _data(admin_client.get(f"/api/admin/teachers/{tid}"))
-    assert data["user"]["name"] == "江先亮"
-    assert data["profile"]["name"] == "江先亮"
+    assert data["user"]["name"] == "江老师"
+    assert data["profile"]["name"] == "江老师"
 
     detail = data["detail"]
     assert set(detail) == {"research", "exchanges", "teaching", "students", "audit"}
@@ -103,7 +103,7 @@ def test_teacher_detail_sections(admin_client):
 def test_teacher_detail_differs_between_teachers(admin_client):
     rows = _data(admin_client.get("/api/admin/teachers"))
     counts = {t["name"]: t["summary"]["counts"]["projects"] for t in rows}
-    assert counts["王强"] < counts["江先亮"]
+    assert counts["王强"] < counts["江老师"]
     assert len(set(counts.values())) > 1, "各教师数据规模应有差异"
 
 

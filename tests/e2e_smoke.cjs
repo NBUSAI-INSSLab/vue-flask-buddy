@@ -93,7 +93,7 @@ async function main() {
   check(brand === "NBUSAI教师工作台", "品牌标题正确", brand);
 
   const userName = (await page.locator(".user-name").innerText()).trim();
-  check(userName.includes("江先亮"), "侧边栏展示教师姓名", userName);
+  check(userName.includes("江老师"), "侧边栏展示教师姓名", userName);
 
   const stats = await page.locator(".stat-card").count();
   check(stats === 4, "首页 4 张统计卡", "实际 " + stats);
@@ -209,7 +209,7 @@ async function main() {
   const setSecs = await page.locator(".modal-mask.show .set-sec").count();
   check(setSecs >= 3, "设置面板含多个分区", "实际 " + setSecs);
   const nameVal = await page.locator(".modal-mask.show input[type=text]").first().inputValue();
-  check(nameVal === "江先亮", "设置面板回填当前教师信息", nameVal);
+  check(nameVal === "江老师", "设置面板回填当前教师信息", nameVal);
   await shot("08-settings");
 
   // 右上角 X 必须能关闭弹窗（回归：曾因 .modal 的 @click.stop 吞掉冒泡而完全失效）
@@ -220,7 +220,7 @@ async function main() {
   await page.waitForSelector(".modal-mask.show .set-sec", { timeout: 8000 });
 
   // 修改姓名 → 保存 → 侧边栏同步刷新 → 改回
-  await page.fill(".modal-mask.show input[type=text]", "江先亮");
+  await page.fill(".modal-mask.show input[type=text]", "江老师");
   await page.locator(".modal-mask.show .set-actions .btn.primary, .modal-mask.show .btn.primary").first().click();
   await page.waitForTimeout(600);
 

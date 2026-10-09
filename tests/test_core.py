@@ -93,7 +93,7 @@ def test_seed_covers_every_collection():
     for coll in config.COLLECTIONS:
         assert coll in seed, coll
         assert isinstance(seed[coll], list)
-    assert seed["profile"]["name"] == "江先亮"
+    assert seed["profile"]["name"] == "江老师"
 
 
 def test_seed_ids_unique_within_collection():
@@ -193,10 +193,10 @@ def test_nested_payload_survives_roundtrip(store):
 
 def test_profile_defaults_and_update(store):
     profile = store.get_profile()
-    assert profile["name"] == "江先亮"
+    assert profile["name"] == "江老师"
     store.set_profile({"dept": "计算机科学与技术学院（新）"})
     assert store.get_profile()["dept"] == "计算机科学与技术学院（新）"
-    assert store.get_profile()["name"] == "江先亮"      # 其它字段保留
+    assert store.get_profile()["name"] == "江老师"      # 其它字段保留
 
 
 def test_set_profile_ignores_none(store):

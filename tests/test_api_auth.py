@@ -58,7 +58,7 @@ def test_logout_revokes_access(client):
 # --------------------------------------------------------------------------- #
 def test_login_ok(anon_client):
     data = _data(anon_client.post("/api/auth/login", json=TEACHER_CREDS))
-    assert data["user"]["name"] == "江先亮"
+    assert data["user"]["name"] == "江老师"
     assert data["user"]["role"] == "teacher"
 
 

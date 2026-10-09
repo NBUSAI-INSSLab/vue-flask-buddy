@@ -216,7 +216,7 @@ async function main() {
     /* ---------------- 公开页结构 ---------------- */
     console.log("\n== 7. 公开简历页 ==");
     const heroName = (await p2.locator(".cv-hero h1").innerText()).trim();
-    check(heroName.indexOf("江先亮") === 0, "姓名开头正确", heroName);
+    check(heroName.indexOf("江老师") === 0, "姓名开头正确", heroName);
     check((await p2.locator(".cv-role-title").count()) === 1, "职称徽标");
     const navLinks = await p2.locator(".cv-nav-link").count();
     check(navLinks === 10, "锚点导航 10 项", "实际 " + navLinks);

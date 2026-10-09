@@ -377,7 +377,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
     const { p2, errs2 } = await openStudentPage(token);
     await p2.waitForSelector(".pub-hero", { timeout: 10000 });
     check((await p2.locator(".pub-hero h1").innerText()).trim() === "计算机网络", "学生页课程名正确");
-    check((await p2.locator(".pub-hero-meta").innerText()).indexOf("江先亮") >= 0, "学生页展示任课教师");
+    check((await p2.locator(".pub-hero-meta").innerText()).indexOf("江老师") >= 0, "学生页展示任课教师");
     check((await p2.locator(".pub-table:not(.cal-table) tbody tr").count()) === 8, "教学大纲 8 章");
     check((await p2.locator(".pub-file").count()) === 2, "学生页只列出可下载的 2 份资料");
     /* 教学日历与联系方式 */
@@ -408,7 +408,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
     await p2.waitForTimeout(200);
     check((await p2.locator(".pub-zoom").count()) === 0, "点击任意处关闭放大");
     check((await p2.locator(".pub-open-row b").innerText()).indexOf("已开放") >= 0, "侧栏开放状态卡");
-    check((await p2.locator(".pub-teacher b").innerText()).indexOf("江先亮") >= 0, "侧栏教师信息");
+    check((await p2.locator(".pub-teacher b").innerText()).indexOf("江老师") >= 0, "侧栏教师信息");
 
     /* 学生匿名下载 */
     const href2 = await p2.locator(".pub-file a.btn").first().getAttribute("href");

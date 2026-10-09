@@ -8,7 +8,7 @@ from __future__ import annotations
 from .utils import day_offset as D
 
 PROFILE = {
-    "name": "江先亮",
+    "name": "江老师",
     "title": "教授",
     "dept": "计算机科学与技术学院",
     "email": "jiangxl@university.edu.cn",
@@ -520,7 +520,7 @@ EXCHANGES = [
         "topic": "作「多模态融合在社区精神健康筛查中的实践」分会场报告，时长 20 分钟。",
         "note": "需在会前 5 天提交报告摘要；同期关注雷达感知分论坛，与 p2 相关。",
         "travel": "10/15 高铁 虹桥，10/17 返程",
-        "participants": ["江先亮", "王雪"],
+        "participants": ["江老师", "王雪"],
     },
     {
         "id": "x2", "title": "IEEE TPAMI 审稿邀请（多模态表征方向）",
@@ -532,7 +532,7 @@ EXCHANGES = [
         "topic": "稿件编号 TPAMI-2026-0412，主题为跨模态对齐的鲁棒性问题。",
         "note": "已完成第一轮意见撰写，待给出最终推荐（minor revision）。",
         "travel": "",
-        "participants": ["江先亮"],
+        "participants": ["江老师"],
     },
     {
         "id": "x3", "title": "国家自然科学基金青年项目通信评议",
@@ -544,7 +544,7 @@ EXCHANGES = [
         "topic": "本年度分配 6 份青年基金申请书，方向集中在智能感知与医疗 AI。",
         "note": "已完成 4 份，剩余 2 份需在本月底前提交，注意回避制度。",
         "travel": "",
-        "participants": ["江先亮"],
+        "participants": ["江老师"],
     },
     {
         "id": "x4", "title": "校企联合实验室技术交流（海康威视）",
@@ -556,7 +556,7 @@ EXCHANGES = [
         "topic": "介绍课题组在低分辨率点云跌倒检测上的工程落地经验。",
         "note": "初步接洽横向合作意向，探索 p2 成果的产品化路径。",
         "travel": "拟 11/8 出发",
-        "participants": ["江先亮", "张伟"],
+        "participants": ["江老师", "张伟"],
     },
     {
         "id": "x5", "title": "2026 中国计算机大会（CNCC）",
@@ -568,7 +568,7 @@ EXCHANGES = [
         "topic": "参加「多模态大模型」与「具身智能」专题论坛，与 3 位同行建立联系。",
         "note": "已整理会议纪要，其中稀疏专家路由的工业落地案例对 p3 有参考价值。",
         "travel": "已完成",
-        "participants": ["江先亮"],
+        "participants": ["江老师"],
     },
 ]
 
@@ -635,7 +635,7 @@ ACHIEVEMENTS = [
     {
         "id": "a1", "title": "基于点云时序建模的毫米波雷达跌倒检测方法",
         "type": "期刊论文", "level": "SCI 二区",
-        "authors": "江先亮, 张伟, 李明", "role": "第一作者",
+        "authors": "江老师, 张伟, 李明", "role": "第一作者",
         "venue": "IEEE Sensors Journal", "date": "2025-09-15",
         "status": "已发表", "score": 8.0,
         "projectId": "p2", "doi": "10.1109/JSEN.2025.3412210",
@@ -644,7 +644,7 @@ ACHIEVEMENTS = [
     {
         "id": "a2", "title": "多模态对比学习在精神分裂症早期识别中的应用",
         "type": "期刊论文", "level": "SCI 二区",
-        "authors": "江先亮, 李明, 王雪", "role": "第一作者",
+        "authors": "江老师, 李明, 王雪", "role": "第一作者",
         "venue": "IEEE Transactions on Affective Computing", "date": "2025-11-20",
         "status": "已录用", "score": 8.0,
         "projectId": "p1", "doi": "—",
@@ -653,7 +653,7 @@ ACHIEVEMENTS = [
     {
         "id": "a3", "title": "基于教师学生网络的电梯故障预测方法及系统",
         "type": "发明专利", "level": "发明专利",
-        "authors": "江先亮, 陈静", "role": "第一发明人",
+        "authors": "江老师, 陈静", "role": "第一发明人",
         "venue": "国家知识产权局", "date": "2026-02-18",
         "status": "已授权", "score": 6.0,
         "projectId": "p3", "doi": "ZL202410987654.3",
@@ -662,7 +662,7 @@ ACHIEVEMENTS = [
     {
         "id": "a4", "title": "智慧养老跌倒监测系统 V1.0",
         "type": "软件著作权", "level": "软著",
-        "authors": "江先亮, 张伟", "role": "第一完成人",
+        "authors": "江老师, 张伟", "role": "第一完成人",
         "venue": "中国版权保护中心", "date": "2025-04-08",
         "status": "已登记", "score": 3.0,
         "projectId": "p2", "doi": "2025SR0456781",
@@ -671,7 +671,7 @@ ACHIEVEMENTS = [
     {
         "id": "a5", "title": "融合语音韵律的阴性症状评估方法研究",
         "type": "期刊论文", "level": "SCI 三区",
-        "authors": "李明, 江先亮", "role": "通讯作者",
+        "authors": "李明, 江老师", "role": "通讯作者",
         "venue": "Biomedical Signal Processing and Control", "date": "2026-05-12",
         "status": "审稿中", "score": 5.0,
         "projectId": "p1", "doi": "—",
@@ -680,7 +680,7 @@ ACHIEVEMENTS = [
     {
         "id": "a6", "title": "多模态融合社区精神健康筛查关键技术及应用",
         "type": "科技奖励", "level": "省部级二等奖",
-        "authors": "江先亮 等", "role": "第一完成人",
+        "authors": "江老师 等", "role": "第一完成人",
         "venue": "省科学技术厅", "date": "2026-01-10",
         "status": "已获奖", "score": 10.0,
         "projectId": "p1", "doi": "—",
@@ -689,7 +689,7 @@ ACHIEVEMENTS = [
     {
         "id": "a7", "title": "断路器分合闸声纹的时频特征与缺陷识别",
         "type": "期刊论文", "level": "EI 期刊",
-        "authors": "江先亮, 王雪", "role": "第二作者",
+        "authors": "江老师, 王雪", "role": "第二作者",
         "venue": "电工技术学报", "date": "",
         "status": "撰写中", "score": 3.0,
         "projectId": "p4", "doi": "—",
@@ -698,7 +698,7 @@ ACHIEVEMENTS = [
     {
         "id": "a8", "title": "面向养老场景的雷达感知关键技术研究",
         "type": "学位论文", "level": "校级优秀硕士论文",
-        "authors": "张伟（指导教师：江先亮）", "role": "指导教师",
+        "authors": "张伟（指导教师：江老师）", "role": "指导教师",
         "venue": "本校研究生院", "date": D(42),
         "status": "申报中", "score": 2.0,
         "projectId": "p2", "doi": "—",

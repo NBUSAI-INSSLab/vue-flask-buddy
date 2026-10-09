@@ -17,7 +17,7 @@ def test_state_contains_all_collections(client):
     data = _data(client.get("/api/state"))
     for coll in config.COLLECTIONS:
         assert coll in data, coll
-    assert data["profile"]["name"] == "江先亮"
+    assert data["profile"]["name"] == "江老师"
     assert len(data["projects"]) == 4
     assert data["meta"]["schemaVersion"] == config.SCHEMA_VERSION
     assert data["stats"]["students"] == 4
@@ -95,7 +95,7 @@ def test_profile_get_and_put(client):
     assert profile["dept"] == "计算机科学与技术学院"
 
     updated = _data(client.put("/api/profile", json={
-        "name": "江先亮", "title": "教授", "dept": "计算机学院",
+        "name": "江老师", "title": "教授", "dept": "计算机学院",
         "office": "信息楼 A-513", "email": "jiangxl@university.edu.cn",
     }))
     assert updated["dept"] == "计算机学院"
@@ -125,7 +125,7 @@ def test_search_empty_query(client):
 
 
 def test_search_limit(client):
-    hits = _data(client.get("/api/search?q=江先亮"))
+    hits = _data(client.get("/api/search?q=江老师"))
     assert len(hits) <= 60
 
 
@@ -134,7 +134,7 @@ def test_search_limit(client):
 # --------------------------------------------------------------------------- #
 def test_export_then_reset_then_import(client):
     backup = client.get("/api/export").get_json()
-    assert backup["profile"]["name"] == "江先亮"
+    assert backup["profile"]["name"] == "江老师"
     assert len(backup["projects"]) == 4
 
     # 改动数据后重置，应恢复演示数据

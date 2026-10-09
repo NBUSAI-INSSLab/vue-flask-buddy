@@ -1,6 +1,6 @@
 """多教师种子：管理员 + 5 位教师的账号与各自的工作台数据。
 
-- 首位教师 **江先亮** 复用 ``seed.full_seed()``（完整演示数据）；
+- 首位教师 **江老师** 复用 ``seed.full_seed()``（完整演示数据）；
 - 其余教师按不同规模生成精简数据 —— 项目 / 论文 / 学生 / 教学 / 成果 / 交流
   数量刻意错开，使管理端的横向统计对比有意义；
 - 注册新账号时可选「演示数据初始化」（复用完整演示包）或空白工作台。
@@ -30,7 +30,7 @@ ADMIN_USER = {
 TEACHER_USERS = [
     {
         "id": "u_jiangxl", "username": "jiangxl", "password": "123456",
-        "role": config.ROLE_TEACHER, "name": "江先亮", "title": "教授",
+        "role": config.ROLE_TEACHER, "name": "江老师", "title": "教授",
         "dept": "计算机科学与技术学院", "email": "jiangxl@university.edu.cn",
         "office": "信息楼 A-513", "mode": "full",
     },

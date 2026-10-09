@@ -147,7 +147,7 @@ def test_resolve_avatar_forms(app):
 # --------------------------------------------------------------------------- #
 def test_build_cv_seed_counts(store):
     data = cv_util.build_cv(store)
-    assert data["name"] == "江先亮"
+    assert data["name"] == "江老师"
     assert len(data["projects"]) == 4
     assert len(data["papers"]) == 4
     assert len(data["patents"]) == 2
@@ -296,7 +296,7 @@ def test_public_cv_published_shape(client):
     token = _token_of(client)
     resp, data = _public_payload(client, token)
     assert resp.status_code == 200
-    assert data["name"] == "江先亮"
+    assert data["name"] == "江老师"
     assert data["sections"]["bio"] is True
     assert len(data["papers"]) == 4
     # 学生邮箱绝不下发

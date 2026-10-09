@@ -63,7 +63,7 @@ function check(cond, name, extra) {
   check(navN === 14, "教师端 14 项导航", "实际 " + navN);
   check((await page.locator(".user-card .icon-btn[title='退出登录']").count()) === 1, "教师端提供退出入口");
   const teacherName = (await page.locator(".user-name").innerText()).trim();
-  check(teacherName.indexOf("江先亮") === 0, "侧边栏显示登录教师", teacherName);
+  check(teacherName.indexOf("江老师") === 0, "侧边栏显示登录教师", teacherName);
   check((await page.locator(".stat-grid .stat-card").count()) === 4, "工作首页统计卡正常");
 
   /* 教师越权 */

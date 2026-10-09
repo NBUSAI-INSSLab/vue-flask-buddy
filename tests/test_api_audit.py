@@ -1,6 +1,6 @@
 """成果审核接口测试：队列汇总 / 筛选 / 通过 / 退回 / 批量 / 权限 / 教师侧流转。
 
-所有写操作只落在「江先亮」这一位教师身上 —— ``tests/conftest.py`` 的
+所有写操作只落在「江老师」这一位教师身上 —— ``tests/conftest.py`` 的
 ``reset_data`` 夹具会在每个用例前把他的租户库还原为 ``full_seed()``，
 因此用例之间互不影响，也不会污染其他教师的数据。
 """
@@ -11,7 +11,7 @@ import pytest
 from backend import audit, config
 
 ADMIN_CREDS = {"username": "admin", "password": "admin123"}
-TEACHER_ID = config.DEFAULT_TENANT_ID          # 江先亮
+TEACHER_ID = config.DEFAULT_TENANT_ID          # 江老师
 OTHER_TEACHER_ID = "u_zhangwei"                # 张伟
 
 PENDING = config.AUDIT_PENDING
@@ -32,7 +32,7 @@ def _error(resp):
 
 
 def _mine(admin_client, status=""):
-    """江先亮的成果行（可直接安全修改）。"""
+    """江老师的成果行（可直接安全修改）。"""
     query = f"?teacher={TEACHER_ID}"
     if status:
         query += f"&status={status}"
@@ -41,13 +41,13 @@ def _mine(admin_client, status=""):
 
 def _one_pending(admin_client):
     rows = _mine(admin_client, PENDING)
-    assert rows, "江先亮应有待审成果"
+    assert rows, "江老师应有待审成果"
     return rows[0]
 
 
 def _one_approved(admin_client):
     rows = _mine(admin_client, APPROVED)
-    assert rows, "江先亮应有已通过成果"
+    assert rows, "江老师应有已通过成果"
     return rows[0]
 
 
@@ -102,7 +102,7 @@ def test_filter_rejects_bad_status(admin_client):
 def test_filter_by_teacher(admin_client):
     rows = _mine(admin_client)
     assert rows and {r["teacherId"] for r in rows} == {TEACHER_ID}
-    assert all(r["teacherName"] == "江先亮" for r in rows)
+    assert all(r["teacherName"] == "江老师" for r in rows)
 
 
 def test_filter_by_keyword(admin_client):

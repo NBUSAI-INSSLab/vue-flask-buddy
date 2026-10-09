@@ -26,7 +26,7 @@ from backend import create_app  # noqa: E402
 from backend.seed import full_seed  # noqa: E402
 from backend.store import open_store  # noqa: E402
 
-TEACHER_ID = config.DEFAULT_TENANT_ID          # 江先亮
+TEACHER_ID = config.DEFAULT_TENANT_ID          # 江老师
 TEACHER_CREDS = {"username": "jiangxl", "password": "123456"}
 ADMIN_CREDS = {"username": "admin", "password": "admin123"}
 SEED_USER_IDS = {u["id"] for u in seed_teachers.all_users()}
@@ -108,7 +108,7 @@ def anon_client(app):
 
 @pytest.fixture()
 def client(app):
-    """已登录的教师客户端（江先亮）。"""
+    """已登录的教师客户端（江老师）。"""
     c = app.test_client()
     _preset_session(c, TEACHER_ID)
     return c

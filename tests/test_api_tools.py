@@ -171,7 +171,7 @@ def test_meeting_note_pushes_todo(client):
     before = len(_data(client.get("/api/collections/todos")))
     data = _data(_run(client, "meeting_note", {
         "title": "课题组第 12 次例会", "when": today(), "place": "信息楼 A-513",
-        "host": "江先亮", "attendees": "李明,王雪",
+        "host": "江老师", "attendees": "李明,王雪",
         "agenda": "1 汇报进展", "conclusion": "继续推进",
         "actions": "补充实验 | 李明 | " + day_offset(10), "push_todo": True,
     }))
@@ -371,5 +371,5 @@ def test_internal_exception_is_caught(monkeypatch):
 def test_export_json_is_valid_backup_shape(client):
     raw = client.get("/api/export").get_data(as_text=True)
     payload = json.loads(raw)
-    assert payload["profile"]["name"] == "江先亮"
+    assert payload["profile"]["name"] == "江老师"
     assert len(payload["tools"]) == 12
