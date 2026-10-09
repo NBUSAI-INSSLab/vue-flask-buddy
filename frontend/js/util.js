@@ -83,7 +83,8 @@
     developments: ["个人发展", "职称晋升、人才项目、培训进修与考核规划"],
     cv: ["个人简历", "对外展示的学术简历，内容来自工作台并实时同步"],
     links: ["常用网站", "学术资源、教学平台与科研工具，分组归类一键直达"],
-    tools: ["常用工具", "教学科研高频工具，点击卡片即可运行"]
+    tools: ["常用工具", "教学科研高频工具，点击卡片即可运行"],
+    agent: ["智能助手", "基于知识库的工作台智能体，可查询登记数据、解答专业问题"]
   };
 
   var NAV_PARENT = {
@@ -94,7 +95,8 @@
     teachings: "teachings",
     courses: "courses", "course-detail": "courses",
     students: "students", "student-detail": "students",
-    developments: "developments", cv: "cv", links: "links", tools: "tools"
+    developments: "developments", cv: "cv", links: "links", tools: "tools",
+    agent: "agent"
   };
 
   /* 常用网站分组（新增 / 编辑时的下拉项，顺序即展示顺序） */
@@ -149,6 +151,20 @@
       return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
         return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
       });
+    },
+    /* Markdown → HTML（智能助手回答等）。先整体转义再交给 marked 解析：
+       Markdown 语法不受影响，而模型输出里的原生 HTML 会被当作纯文本显示，杜绝注入。
+       marked 在 vendor/ 本地化（项目保持离线可用），缺失时优雅退化为转义后的纯文本。 */
+    md: function (s) {
+      var text = String(s == null ? "" : s);
+      if (global.marked && typeof global.marked.parse === "function") {
+        try {
+          return global.marked.parse(
+            text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"),
+            { breaks: true, gfm: true, mangle: false, headerIds: false });
+        } catch (e) { /* 解析失败退化为纯文本 */ }
+      }
+      return "<p>" + this.esc(text).replace(/\n/g, "<br>") + "</p>";
     },
     /* 课程对学生可见性：与 backend/courses.py::visibility 保持同一判定规则。
        前端只用它渲染徽标与列表预览，真正的准入判定仍在服务端。 */

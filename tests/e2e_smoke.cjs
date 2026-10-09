@@ -84,7 +84,7 @@ async function main() {
   await page.waitForSelector(".nav-item", { timeout: 15000 });
 
   const navCount = await page.locator(".nav-item").count();
-  check(navCount === 13, "侧边栏渲染 13 个导航项", "实际 " + navCount);
+  check(navCount === 14, "侧边栏渲染 14 个导航项", "实际 " + navCount);
 
   const cloak = await page.locator("#app[v-cloak]").count();
   check(cloak === 0, "Vue 挂载后移除 v-cloak（首屏可见）");

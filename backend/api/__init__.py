@@ -10,6 +10,7 @@ from flask import Blueprint, g, jsonify, request
 
 from .. import auth as auth_util
 from .admin import bp as admin_bp
+from .agent import bp as agent_bp
 from .auth import bp as auth_bp
 from .courses import bp as courses_bp
 from .cv import bp as cv_bp
@@ -20,6 +21,7 @@ from .tools import bp as tools_bp
 
 bp = Blueprint("api", __name__)
 bp.register_blueprint(auth_bp)
+bp.register_blueprint(agent_bp)
 bp.register_blueprint(data_bp)
 bp.register_blueprint(tools_bp)
 bp.register_blueprint(admin_bp)

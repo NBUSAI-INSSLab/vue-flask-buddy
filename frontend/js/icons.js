@@ -66,7 +66,10 @@
     link: '<path d="M10.5 13.5a3.5 3.5 0 0 0 5 0l3.5-3.5a3.54 3.54 0 0 0-5-5l-1.6 1.6"/><path d="M13.5 10.5a3.5 3.5 0 0 0-5 0L5 14a3.54 3.54 0 0 0 5 5l1.6-1.6"/>',
     phone: '<path d="M21 16.9v2.6a2 2 0 0 1-2.2 2 19.6 19.6 0 0 1-8.5-3 19.3 19.3 0 0 1-6-6 19.6 19.6 0 0 1-3-8.6A2 2 0 0 1 3.3 2h2.6a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L7.1 9.7a16 16 0 0 0 6 6l1.1-1.1a2 2 0 0 1 2.1-.5c.9.4 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/>',
     chat: '<path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.6 9.6 0 0 1-3.8-.8L3 21l1.9-5.2A8.4 8.4 0 0 1 12 3.1a8.4 8.4 0 0 1 9 8.4z"/><path d="M9 11.5h.01M12.5 11.5h.01M16 11.5h.01"/>',
-    qrcode: '<rect x="3" y="3" width="7" height="7" rx="1.4"/><rect x="14" y="3" width="7" height="7" rx="1.4"/><rect x="3" y="14" width="7" height="7" rx="1.4"/><path d="M14 14h3v3h-3z"/><path d="M20 14v1M20 18v3h-3M14 20v1"/>'
+    qrcode: '<rect x="3" y="3" width="7" height="7" rx="1.4"/><rect x="14" y="3" width="7" height="7" rx="1.4"/><rect x="3" y="14" width="7" height="7" rx="1.4"/><path d="M14 14h3v3h-3z"/><path d="M20 14v1M20 18v3h-3M14 20v1"/>',
+    bot: '<rect x="4" y="8" width="16" height="12" rx="4"/><path d="M12 8V4M12 4a1.6 1.6 0 1 0-.01-3.2A1.6 1.6 0 0 0 12 4z"/><circle cx="9" cy="14" r="1.15" fill="currentColor" stroke="none"/><circle cx="15" cy="14" r="1.15" fill="currentColor" stroke="none"/><path d="M9.5 17.5h5M2 12v4M22 12v4"/>',
+    doc: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/>',
+    send: '<path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/>',
   };
 
   // 导航 / 实体 -> 图标

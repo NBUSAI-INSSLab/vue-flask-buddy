@@ -197,6 +197,30 @@
       batchReview: function (payload) {
         return request("POST", "/api/admin/achievements/batch-review", payload);
       }
+    },
+
+    /** 智能助手：设置 / 会话对话 / 知识库 */
+    agent: {
+      settings: function () { return request("GET", "/api/agent/settings"); },
+      saveSettings: function (payload) { return request("PUT", "/api/agent/settings", payload); },
+      testSettings: function (payload) { return request("POST", "/api/agent/settings/test", payload); },
+      sessions: function () { return request("GET", "/api/agent/sessions"); },
+      newSession: function (title) { return request("POST", "/api/agent/sessions", { title: title }); },
+      dropSession: function (id) { return request("DELETE", "/api/agent/sessions/" + id); },
+      messages: function (id) { return request("GET", "/api/agent/sessions/" + id + "/messages"); },
+      chat: function (sessionId, message) {
+        return request("POST", "/api/agent/chat", { sessionId: sessionId, message: message });
+      },
+      kbDocs: function () { return request("GET", "/api/agent/kb"); },
+      kbUpload: function (fileList) {
+        var form = new FormData();
+        for (var i = 0; i < fileList.length; i++) form.append("files", fileList[i]);
+        return request("POST", "/api/agent/kb", form, true);
+      },
+      kbDelete: function (id) { return request("DELETE", "/api/agent/kb/" + id); },
+      kbSearch: function (q) {
+        return request("GET", "/api/agent/kb/search?q=" + encodeURIComponent(q));
+      }
     }
   };
 

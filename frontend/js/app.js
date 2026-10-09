@@ -14,7 +14,8 @@
       label: "工作区",
       items: [
         { key: "dashboard", text: "工作首页", icon: "dashboard" },
-        { key: "schedule", text: "日程管理", icon: "calendar" }
+        { key: "schedule", text: "日程管理", icon: "calendar" },
+        { key: "agent", text: "智能助手", icon: "bot" }
       ]
     },
     {
